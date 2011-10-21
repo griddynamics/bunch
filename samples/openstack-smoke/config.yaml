@@ -1,0 +1,82 @@
+myip: 127.0.0.1
+
+nova:
+  rpm_packages: openstack-nova-node-full
+  conf_file: /home/apetrovich/nova.conf
+
+db:
+  db_name: nova2
+  user: nova_user
+  password: nova
+
+
+user:
+  name: admin1
+
+project:
+  name: project1
+
+network:
+  cidr: 10.124.0.0/24
+  nets: 1
+  ips:  256
+
+image:
+  path: images/ttylinux.tar.gz
+
+bundle:
+  image1: test_image_bundle
+  image2: test_image_bundle2
+
+keypair:
+  name: test_key
+
+vm_type: m1.tiny
+
+instance1: ins1
+instance2: ins2
+
+openstack-services:
+ - openstack-nova-api
+ - openstack-nova-direct-api
+ - openstack-nova-compute
+ - openstack-nova-network
+ - openstack-nova-objectstore
+ - openstack-nova-scheduler
+ - openstack-glance-api
+ - openstack-glance-registry
+
+supplementary-services:
+ - rabbitmq-server
+ - mysqld
+ - libvirtd
+
+packages-to-clean:
+ - django-file-upload
+ - django-openstack
+ - django-openstack-vnc
+ - openstack-client
+ - openstack-client-doc
+ - openstack-compute
+ - openstack-dashboard
+ - openstack-glance
+ - openstack-glance-doc
+ - openstack-keystone
+ - openstack-nova
+ - openstack-nova-api
+ - openstack-nova-cc-config
+ - openstack-nova-compute
+ - openstack-nova-compute-config
+ - openstack-nova-doc
+ - openstack-nova-instancemonitor
+ - openstack-nova-network
+ - openstack-nova-node-compute
+ - openstack-nova-node-full
+ - openstack-nova-noVNC
+ - openstack-nova-objectstore
+ - openstack-nova-scheduler
+ - openstack-nova-volume
+ - openstackx
+ - python-glance
+ - python-nova
+ - python-novaclient 
