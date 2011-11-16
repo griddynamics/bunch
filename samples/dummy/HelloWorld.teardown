@@ -1,4 +1,4 @@
-Feature: Hello World
+Feature: World Teardown
 
     Scenario: Teardown the World
         Teardown "the World"

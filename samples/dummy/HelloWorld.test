@@ -1,4 +1,4 @@
-Feature: Hello World
+Feature: World Test
 
     Scenario: Say Hello to the World
         Say "Hello World!"
