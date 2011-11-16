@@ -8,9 +8,10 @@ Features
 ========
 
 * Test parameterization via Jinja2 templates and YAML configs
-* Parallel test scenario execution
-* Dependencies for test fixtures: setup and teardown scripts associated with test may be shared within test bunch
-* Fixtures may be grouped by test configuration. That makes possible writing environment agnostic tests which require different fixture versions for each environment
+* Test fixture separation
+* Parallel test scenario execution (TBD)
+* Dependencies for test fixtures: setup and teardown scripts associated with test may be shared within test bunch and between different bunches (TBD)
+* Fixtures may be grouped by test configuration. That makes possible writing environment agnostic tests which require different fixture versions for each environment (TBD)
 * xUnit XML reports. This is handy for using Bunch with CI tools
 
 Installation
@@ -73,10 +74,10 @@ By default all tests are dependent from their fixtures of any. But it is possibl
 
 The `<list of setup fixtures required>` is the white-space or newline separated list of fixture names which should be executed and return successful result before test run. Setup scripts may be executed in parrallel and started in the order specified in the "Requires setup:" statement. Often setup actions rely on each other and so should be executed sequentially. For that reason syncronization quantifier may be used. Just put exclamation mark between fixture names, to specify the point of syncronization::
 
-        setup1 ! setup2 setup3 ! setup_finall
+        setup1 ! setup2 setup3 ! setup_final
 
 This splits fixtures into groups. All fixtures within single group are executed in parallel. Also it is possible to make it run sequentially in specific order::
-        setup1 ! setup2 ! setup3! setup_finall
+        setup1 ! setup2 ! setup3! setup_final
 
 The corresponding teardown scripts are executed after test is finished, so there is no need to specify that particular teardown is required.
 
