@@ -42,7 +42,7 @@ class FeaturePersonalizer(object):
             if not self.global_config is None: environment.update(self.global_config)
             if not self.local_config is None: environment.update(self.local_config)
             for filename in self.__find_feature_files():
-                with open(filename) as f:
+                with open(filename, "r") as f:
                     template = Template(f.read())
         #            print template
                 
@@ -113,6 +113,8 @@ class Bunch(object):
 
 
 class BunchTestScenario(object):
+    re_setup = re.compile(r'.*Requires setup(:[\s\S]*"""[\s\S]*""")|(".*")')
+    #re_external_setup = re.compile(r'Requires external setup "(.*)"')
     def __init__(self, test, setup=None, teardown=None):
         self.test = test
         self.setup = [] if setup is None else setup
@@ -123,8 +125,11 @@ class BunchTestScenario(object):
         test_name, ext = os.path.splitext(os.path.basename(self.test))
         return test_name
 
-    def get_test_triplet(self, cfg_name=None):
-        fixture_name = self.name if cfg_name is None else self.name + "." + cfg_name
+    def __get_setup_requirements(self, text):
+        pass
+
+    def get_test_triplet(self, env_name=None):
+        fixture_name = self.name if env_name is None else self.name + "." + env_name
         setup_names = [os.path.splitext(os.path.basename(item))[0] for item in self.setup]
         teardown_names = [os.path.splitext(os.path.basename(item))[0] for item in self.teardown]
         setup = self.setup[setup_names.index(fixture_name)] if fixture_name in setup_names else None
@@ -132,15 +137,17 @@ class BunchTestScenario(object):
         return self.test, setup, teardown
 
     def get_test_setup_dependencies(self):
+        #returns a list of tuples: ('bunch', "script")
         return []
 
     def get_test_teardown_dependencies(self):
-        return []
+        return self.get_test_setup_dependencies()
 
 class SerialBunchRunner(object):
-    def __init__(self, bunch_list, args):
+    def __init__(self, bunch_list, args, env_name=None):
         self.args = args
         self.bunch_list = bunch_list
+        self.env_name=env_name
 
     def __save_path_for_test(self, test):
         return os.path.splitext(test)[0] + ".result.xml"
@@ -149,7 +156,7 @@ class SerialBunchRunner(object):
         for bunch in self.bunch_list:
             scenarios = bunch.get_test_scenarios()
             for scenario in scenarios:
-                test, setup, teardown  = scenario.get_test_triplet()
+                test, setup, teardown  = scenario.get_test_triplet(self.env_name)
                 results = XmlResultCollector()
                 for item in [setup, test, teardown]:
                     if item:
@@ -168,9 +175,11 @@ class SerialBunchRunner(object):
 
 
 class XmlResultCollector(object):
+    re_success = re.compile(r'<testsuite.*failed="0"')
+    
     def __init__(self):
         self.results = []
-        self.__re_success = re.compile(r'<testsuite.*failed="0"')
+
 
     def pickup(self, filename):
         with open(filename, 'r') as result_file:
@@ -178,7 +187,7 @@ class XmlResultCollector(object):
 
 
     def __junit_test_passed(self, result):
-        search_result = self.__re_success.search(result)
+        search_result = XmlResultCollector.re_success.search(result)
         return (not search_result is None) and len(search_result.group()) > 0
 
     def __successful(self, result_index):

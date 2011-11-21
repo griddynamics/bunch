@@ -18,7 +18,9 @@ usage: %prog [options] [bunch_dir]... result_dir
 
     options:
     -c|--config[=config.yaml] - Reads global config file before bunch execution
+    -e|--environment=<name> - Run fixtures for specific environment
     -b|--bunch-concurrency=serial|full|limited
+
 
 """
 
@@ -38,7 +40,10 @@ def main():
                       help="YAML config file")
     parser.add_option("-b", "--bunch-concurency",  action="store", type="string",
                       dest="concurrency", default='serial',
-                      help="This option indicates test execution parallelism", metavar="FILE")
+                      help="This option indicates test execution parallelism", metavar="CONCURRENCY_TYPE")
+    parser.add_option("-e", "--environment",  action="store", type="string",
+                      dest="environment",
+                      help="This option indicates type of test fixtures intended for environment NAME", metavar="NAME")
     (options, args) = parser.parse_args()
 
     if len(args) <= 1:  usage(); sys.exit(2)
@@ -73,7 +78,7 @@ def main():
             if str(arg).startswith(opt):
                 return False
 
-        if arg in [options.config, options.concurrency]:
+        if arg in [options.config, options.concurrency, options.environment]:
             return False
 
         if arg in bunch_dir_args:
