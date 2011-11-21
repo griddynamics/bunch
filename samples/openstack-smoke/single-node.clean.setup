@@ -1,0 +1,21 @@
+Feature: Install OpenStack from scratch on clean environment
+    
+
+    Scenario: Install packages
+        Given current user can execute sudo without password
+        And every RPM package available:
+            | PackageName   |
+            {% for package in packages_to_install %}
+            | {{ package }} |
+            {% endfor %}
+        When I install RPM package(s):
+            | PackageName   |
+            {% for package in packages_to_install %}
+            | {{ package }} |
+            {% endfor %}
+        Then every RPM package installed:
+            | PackageName   |
+            {% for package in packages_to_install %}
+            | {{ package }} |
+            {% endfor %}
+

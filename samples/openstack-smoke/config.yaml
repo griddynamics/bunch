@@ -36,7 +36,7 @@ vm_type: m1.tiny
 instance1: ins1
 instance2: ins2
 
-openstack-services:
+openstack_services:
  - openstack-nova-api
  - openstack-nova-direct-api
  - openstack-nova-compute
@@ -46,12 +46,17 @@ openstack-services:
  - openstack-glance-api
  - openstack-glance-registry
 
-supplementary-services:
+supplementary_services:
  - rabbitmq-server
  - mysqld
  - libvirtd
 
-packages-to-clean:
+packages_to_install:
+ - openstack-nova-node-full
+ - libvirt
+ - mysql
+
+packages_to_clean:
  - django-file-upload
  - django-openstack
  - django-openstack-vnc
