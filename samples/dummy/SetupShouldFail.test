@@ -1,0 +1,6 @@
+Feature: World Test Fail
+
+    Scenario: Say Hello to the World
+        Say "Should never happen as setup should have failed!"
+
+

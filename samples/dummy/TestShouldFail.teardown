@@ -1,0 +1,6 @@
+Feature: TestShouldFail
+
+    Scenario: Teardown the World
+        Teardown "the World"
+
+

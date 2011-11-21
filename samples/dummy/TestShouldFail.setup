@@ -1,0 +1,6 @@
+Feature: TestShouldFail
+
+    Scenario: In the beginning was the Word
+        In the beginning was "the Word"
+
+

@@ -1,0 +1,6 @@
+Feature: World Teardown Fail
+
+    Scenario: Teardown the World
+        Teardown "Should never happen as setup should have failed"
+
+
