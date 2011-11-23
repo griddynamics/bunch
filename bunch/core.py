@@ -6,7 +6,7 @@ from lettuce import fs
 from shutil import copytree, rmtree, move
 import yaml
 from jinja2 import Template
-from lettuce import lettuce_cli
+from lettuce import lettuce_cli, Feature
 from xml.dom import minidom
 import multiprocessing
 import subprocess
@@ -33,7 +33,7 @@ class FeaturePersonalizer(object):
     def __find_feature_files(self):
         paths = fs.FileSystem.locate(self.working_dir, "*.setup") +\
             fs.FileSystem.locate(self.working_dir, "*.test") +\
-            fs.FileSystem.locate(self.working_dir, "*.setup")
+            fs.FileSystem.locate(self.working_dir, "*.teardown")
         return paths
 
     def personalize(self):
@@ -105,15 +105,17 @@ class Bunch(object):
             test_prefix = test_name + "."
             test_setup_scripts = [item for item in setup_scripts if os.path.basename(item).startswith(test_prefix)]
             test_teardown_scripts = [item for item in teardown_scripts if os.path.basename(item).startswith(test_prefix)]
-            scenarios.append(BunchTestScenario(test, test_setup_scripts, test_teardown_scripts))
+            scenarios.append(BunchTestStory(test, test_setup_scripts, test_teardown_scripts))
 
         return scenarios
 
             
 
 
-class BunchTestScenario(object):
-    re_setup = re.compile(r'.*Requires setup(:[\s\S]*"""[\s\S]*""")|(".*")')
+class BunchTestStory(object):
+    setup_scenario = u'Prepare setup'
+    #re_setup = re.compile(r'.*Requires setup(:[\s\S]*"""[\s\S]*""")|(".*")')
+    re_setup = re.compile(r'Requires setup "(.*)"')
     #re_external_setup = re.compile(r'Requires external setup "(.*)"')
     def __init__(self, test, setup=None, teardown=None):
         self.test = test
@@ -125,8 +127,18 @@ class BunchTestScenario(object):
         test_name, ext = os.path.splitext(os.path.basename(self.test))
         return test_name
 
-    def __get_setup_requirements(self, text):
-        pass
+    def __find_setup_definitions(self, sentence):
+        res = self.re_setup.findall(sentence)[0]
+        if res:
+            return res.split()
+
+    def __get_setup_requirements(self):
+        feature = Feature.from_file(self.test)
+        for scenario in feature.scenarios:
+            if scenario.name == self.setup_scenario:
+                for step in scenario.steps:
+                    setup_names = self.__find_setup_definitions(step.original_sentence)
+                    return setup_names
 
     def get_test_triplet(self, env_name=None):
         fixture_name = self.name if env_name is None else self.name + "." + env_name
@@ -136,12 +148,44 @@ class BunchTestScenario(object):
         teardown = self.teardown[teardown_names.index(fixture_name)] if fixture_name in teardown_names else None
         return self.test, setup, teardown
 
+
     def get_test_setup_dependencies(self):
         #returns a list of tuples: ('bunch', "script")
-        return []
+        reqs = self.__get_setup_requirements()
+        if reqs:
+            name2path = lambda n: os.path.join(os.path.dirname(self.test), n+".setup")
+            return map(name2path, reqs)
+
 
     def get_test_teardown_dependencies(self):
-        return self.get_test_setup_dependencies()
+        reqs = self.__get_setup_requirements()
+        if reqs:
+            name2path = lambda n: os.path.join(os.path.dirname(self.test), n+".teardown")
+            #reverse
+            return map(name2path, reqs)
+
+
+    def get_story_files(self, env_name=None):
+        """ Return file names list of the story files.
+            First elements of this list are setup files required by test,
+            then goes test file itself, and then teardown files in reverse order
+        """
+        test, setup, teardown  = self.get_test_triplet(env_name)
+        test_depencies = self.get_test_setup_dependencies()
+        teardown_depencies = self.get_test_teardown_dependencies()
+
+        story_files = [setup]
+        if test_depencies:
+            story_files.extend(test_depencies)
+        story_files.append(test)
+        if teardown_depencies:
+            story_files.extend(reversed(teardown_depencies))
+        story_files.append(teardown)
+
+        return story_files
+
+
+
 
 class SerialBunchRunner(object):
     def __init__(self, bunch_list, args, env_name=None):
@@ -157,13 +201,23 @@ class SerialBunchRunner(object):
             scenarios = bunch.get_test_scenarios()
             for scenario in scenarios:
                 test, setup, teardown  = scenario.get_test_triplet(self.env_name)
+                test_depencies = scenario.get_test_setup_dependencies()
+                teardown_depencies = scenario.get_test_teardown_dependencies()
+                story_files = [setup]
+
+                if test_depencies:
+                    story_files.extend(test_depencies)
+                story_files.append(test)
+                if teardown_depencies:
+                    story_files.extend(teardown_depencies)
+                story_files.append(teardown)
+
+
                 results = XmlResultCollector()
-                for item in [setup, test, teardown]:
+                for item in story_files:
                     if item:
-                        
                         if item == test and (not results.all_successful()):
                             break
-
                         runner = LettuceRunner(item, self.args)
                         runner.run()
                         results.pickup(runner.xml_result())
