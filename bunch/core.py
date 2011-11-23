@@ -33,7 +33,7 @@ class FeaturePersonalizer(object):
     def __find_feature_files(self):
         paths = fs.FileSystem.locate(self.working_dir, "*.setup") +\
             fs.FileSystem.locate(self.working_dir, "*.test") +\
-            fs.FileSystem.locate(self.working_dir, "*.setup")
+            fs.FileSystem.locate(self.working_dir, "*.teardown")
         return paths
 
     def personalize(self):
