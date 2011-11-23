@@ -94,7 +94,7 @@ def main():
 
 
     args = filter(filter_args_for_lettuce, sys.argv)
-    SerialBunchRunner(bunch_list, args).run()
+    SerialBunchRunner(bunch_list, args, options.environment).run()
 
 
 
