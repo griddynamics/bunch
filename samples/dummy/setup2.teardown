@@ -1,0 +1,6 @@
+Feature: SETUP2 Teardown
+
+    Scenario: Teardown the SETUP2
+        Teardown "the World"
+
+

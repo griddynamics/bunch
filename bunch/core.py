@@ -132,12 +132,12 @@ class BunchTestStory(object):
     def __find_setup_definitions(self, sentence):
         setup_names = self.re_setup.findall(sentence)[0]
         if setup_names:
-            return setup_names
+            return setup_names.split()
 
     def __find_external_setup_definitions(self, sentence):
         external_setup_names = self.re_external_setup.findall(sentence)[0]
         if external_setup_names:
-            return external_setup_names
+            return external_setup_names.split()
 
     def __get_setup_requirements(self):
         feature = Feature.from_file(self.test)
@@ -183,18 +183,14 @@ class BunchTestStory(object):
         test_depencies = self.get_test_setup_dependencies()
         teardown_depencies = self.get_test_teardown_dependencies()
 
-        story_files = [setup]
+        story_files = []
         if test_depencies:
             story_files.extend(test_depencies)
-        story_files.append(test)
+        story_files.extend([setup, test, teardown])
         if teardown_depencies:
             story_files.extend(reversed(teardown_depencies))
-        story_files.append(teardown)
 
         return story_files
-
-
-
 
 
 
@@ -212,7 +208,7 @@ class SerialBunchRunner(object):
             scenarios = bunch.get_test_scenarios()
             for scenario in scenarios:
                 #test, setup, teardown  = scenario.get_test_triplet(self.env_name)
-                #TODO: если присутсвует в писке
+                #TODO: if original step definition exists in the list
                 story_files = scenario.get_story_files(self.env_name)
                 results = XmlResultCollector()
                 for item in story_files:

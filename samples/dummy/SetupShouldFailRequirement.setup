@@ -1,0 +1,6 @@
+Feature: World Setup FAIL
+
+    Scenario: In the beginning was the Failure
+        In the beginning was "the Failure"
+
+
