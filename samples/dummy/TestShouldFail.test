@@ -3,4 +3,3 @@ Feature: ShouldFail Test
     Scenario: ShouldFail
         Say "ShouldFail!"
 
-
