@@ -1,12 +1,19 @@
-myip: 127.0.0.1
+cc_external_ip:
+  &cc_ip_value 172.18.40.10
+
+compute_nodes:
+ - localhost
+ - *cc_ip_value
 
 nova:
   rpm_packages: openstack-nova-node-full
   conf_file: /home/apetrovich/nova.conf
 
 db:
-  db_name: nova2
-  user: nova_user
+  admin: root
+  admin_pwd: nova
+  name: nova
+  user: nova
   password: nova
 
 
@@ -55,6 +62,8 @@ packages_to_install:
  - openstack-nova-node-full
  - libvirt
  - mysql
+ - mysql-server
+ - rabbitmq-server
 
 packages_to_clean:
  - django-file-upload
@@ -84,4 +93,18 @@ packages_to_clean:
  - openstackx
  - python-glance
  - python-nova
- - python-novaclient 
+ - python-novaclient
+ - openstack-swift
+
+dep_wildcards_to_clean:
+ - '*qemu*'
+ - '*libvirt*'
+ - '*guestfs*'
+ - '*openstack*'
+ - '*eventlet*'
+
+state_files:
+ - '/etc/libvirt'
+ - '/var/lib/libvirt'
+ - '/var/lib/keystone/keystone.{,token.}db'
+ - '/var/log/keystone/*'

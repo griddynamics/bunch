@@ -1,4 +1,4 @@
 Feature: Create user, project, network via python-novaclient CLI
-    Register and upload images, upload key-pair and start instances using euca2ools
+    Register and upload images, upload key-pair and start instances using python-novaclient
 
 
