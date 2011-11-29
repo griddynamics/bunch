@@ -94,7 +94,9 @@ def main():
 
 
     args = filter(filter_args_for_lettuce, sys.argv)
-    SerialBunchRunner(bunch_list, args, options.environment).run()
+    none_failed = SerialBunchRunner(bunch_list, args, options.environment).run()
+    if not none_failed:
+        sys.exit(2)
 
 
 

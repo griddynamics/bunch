@@ -41,6 +41,8 @@ class FeaturePersonalizer(object):
             environment = dict()
             if not self.global_config is None: environment.update(self.global_config)
             if not self.local_config is None: environment.update(self.local_config)
+
+
             for filename in self.__find_feature_files():
                 with open(filename, "r") as f:
                     template = Template(f.read())
@@ -153,6 +155,7 @@ class SerialBunchRunner(object):
         return os.path.splitext(test)[0] + ".result.xml"
 
     def run(self):
+        none_failed = True
         for bunch in self.bunch_list:
             scenarios = bunch.get_test_scenarios()
             for scenario in scenarios:
@@ -165,12 +168,13 @@ class SerialBunchRunner(object):
                             break
 
                         runner = LettuceRunner(item, self.args)
-                        runner.run()
+                        success = runner.run()
+                        none_failed = none_failed and success
                         results.pickup(runner.xml_result())
                         runner.clean()
-                        #TODO add fixture result handling
-                results.dump(self.__save_path_for_test(test))
 
+                results.dump(self.__save_path_for_test(test))
+        return none_failed
 
 
 
@@ -243,6 +247,7 @@ class LettuceRunner(object):
     def run(self):
         new_args = []
         new_args.extend(self.args)
+        new_args.append("--verbosity=3")
         new_args.append("--with-xunit")
         new_args.append("--xunit-file=" + self.__xml_report_file())
         new_args.append(self.script)
@@ -251,7 +256,8 @@ class LettuceRunner(object):
         #Due to bug in Lettuce: we need to call it via console script
         lettuce_cmd_line = ["lettuce"]
         lettuce_cmd_line.extend(sys.argv[1:])
-        subprocess.call(lettuce_cmd_line)
+        retcode = subprocess.call(lettuce_cmd_line)
+        return retcode == 0
         
 
 
