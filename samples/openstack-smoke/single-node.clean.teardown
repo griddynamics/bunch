@@ -10,7 +10,7 @@ Feature: Stop services, remove packages and clear all openstack stuff
             {% for service in supplementary_services %}
             | {{ service }} |
             {% endfor %}
-         Then every service is stopped:
+        Then every service is stopped:
             | ServiceName   |
             {% for service in openstack_services %}
             | {{ service }} |
@@ -41,7 +41,7 @@ Feature: Stop services, remove packages and clear all openstack stuff
             | {{ package }} |
             {% endfor %}
 
-    Scenario: Remove packages
+    Scenario: Clean state files
         Given current user can execute sudo without password
         And every RPM package is not installed:
             | PackageName   |
@@ -51,7 +51,12 @@ Feature: Stop services, remove packages and clear all openstack stuff
             {% for package in packages_to_clean %}
             | {{ package }} |
             {% endfor %}
-        When I clean state files:
+        When I kill all processes:
+            | Process |
+            {% for item in processes_to_kill %}
+            | {{ item }} |
+            {% endfor %}
+        And I clean state files:
             | PathWildCard |
             {% for item in state_files %}
             | {{ item }} |

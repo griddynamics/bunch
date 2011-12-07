@@ -1,4 +1,48 @@
 Feature: Create user, project, network via python-novaclient CLI
     Register and upload images, upload key-pair and start instances using python-novaclient
 
+    Scenario: Create admin user
+        Given every service is running:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+        When I create nova admin user "{{user.name}}"
+        Then nova user "{{user.name}}" exists
 
+    Scenario: Create project
+        Given nova user "{{user.name}}" exists
+        When I create nova project "{{project.name}}" for user "{{user.name}}"
+        Then nova project "{{project.name}}" exists
+        And nova user "{{user.name}}" is the manager of the nova project "{{project.name}}"
+
+    Scenario: Create network
+        Given nova project "{{project.name}}" exists
+        When I create nova network "{{network.cidr}}" with "{{network.nets}}" nets, "{{network.ips}}" IPs per network
+        Then nova network "{{network.cidr}}" exists
+
+    Scenario: Upload and register images
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        And VM image tarball is available at "{{image.url}}"
+        When I download VM image tarball at "{{image.url}}" and unpack it
+        And I register VM image "{{image.name}}" for owner "{{user.name}}" using disk "{{image.disk}}", ram "{{image.ram}}", kernel "{{image.kernel}}"
+        Then VM image "{{image.name}}" is registered
+
+    Scenario: Register keypair
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        When I add keypair with name "{{keypair.name}}"
+        Then keypair with name "{{keypair.name}}" exists
+
+    Scenario: Start single instance
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        And VM image "{{image.name}}" is registered
+        And keypair with name "{{keypair.name}}" exists
+        When I start VM instance "{{vm.name}}" using image "{{image.name}}",  flavor "{{vm.flavor}}" and keypair "{{keypair.name}}"
+        Then VM instance "{{vm.name}}" comes up within "{{vm.boot_timeout}}" seconds
+        And VM instance "{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+
+
+    Scenario: SSH into VM instance
+        Given VM instance "{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        When I check that "ssh" port of VM instance "{{vm.name}}" is open and serves "ssh" protocol
+        Then I can log into VM "{{vm.name}}" via SSH as "{{vm.user}}"

@@ -1,13 +1,21 @@
+build_environment: 'master'
+yum_repository: 'openstack-rhel'
+
 cc_external_ip:
   &cc_ip_value 172.18.40.10
+
+network_interface: bond0
+
 
 compute_nodes:
  - localhost
  - *cc_ip_value
 
+
+
 nova:
   rpm_packages: openstack-nova-node-full
-  conf_file: /home/apetrovich/nova.conf
+  conf_file: /etc/nova/nova.conf
 
 db:
   admin: root
@@ -24,12 +32,17 @@ project:
   name: project1
 
 network:
-  cidr: 10.124.0.0/24
+  cidr: 172.30.252.0/22
   nets: 1
-  ips:  256
+  ips:  1024
 
 image:
   path: images/ttylinux.tar.gz
+  url: http://osc-build.vm.griddynamics.net/images/rhel_image.tar.gz
+  disk: rootfs.raw
+  ram: initramfs-2.6.32-131.0.15.el6.x86_64.img
+  kernel: vmlinuz-2.6.32-131.0.15.el6.x86_64
+  name: rhel_image
 
 bundle:
   image1: test_image_bundle
@@ -38,7 +51,12 @@ bundle:
 keypair:
   name: test_key
 
-vm_type: m1.tiny
+vm:
+  user: root
+  flavor: m1.tiny
+  name: "rhel_instance1"
+  boot_timeout: 60
+  ping_deadline: 30
 
 instance1: ins1
 instance2: ins2
@@ -48,7 +66,6 @@ openstack_services:
  - openstack-nova-direct-api
  - openstack-nova-compute
  - openstack-nova-network
- - openstack-nova-objectstore
  - openstack-nova-scheduler
  - openstack-glance-api
  - openstack-glance-registry
@@ -58,12 +75,24 @@ supplementary_services:
  - mysqld
  - libvirtd
 
+test_prepequisites:
+ - tar
+ - grep
+ - sed
+ - gawk
+ - unzip
+ - openssh-clients
+ - nc
+ - wget
+ - curl
+ - nmap
+
 packages_to_install:
- - openstack-nova-node-full
  - libvirt
  - mysql
  - mysql-server
  - rabbitmq-server
+ - openstack-nova-node-full
 
 packages_to_clean:
  - django-file-upload
@@ -101,10 +130,30 @@ dep_wildcards_to_clean:
  - '*libvirt*'
  - '*guestfs*'
  - '*openstack*'
+ - '*nova*'
+ - '*glance*'
+ - '*swift*'
+ - '*keystone*'
  - '*eventlet*'
+
+processes_to_kill:
+ - 'qemu-kvm'
+ - 'dnsmasq'
 
 state_files:
  - '/etc/libvirt'
  - '/var/lib/libvirt'
+ - '/var/log/libvirt'
  - '/var/lib/keystone/keystone.{,token.}db'
- - '/var/log/keystone/*'
+ - '/var/log/keystone/'
+ - '/var/lib/nova'
+ - '/var/log/nova'
+ - '/etc/nova'
+ - '/var/lib/glance'
+ - '/var/log/glance'
+ - '/etc/glance'
+ - '/var/log/rabbitmq/'
+ - '/var/lib/rabbitmq/'
+ - '/tmp/.guestfs*'
+ - '/tmp/tmp*'
+
