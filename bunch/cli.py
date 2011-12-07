@@ -46,7 +46,8 @@ def main():
                       help="This option indicates type of test fixtures intended for environment NAME", metavar="NAME")
     (options, args) = parser.parse_args()
 
-    if len(args) <= 1:  usage(); sys.exit(2)
+
+    if len(args) <= 1:  parser.usage(); sys.exit(2)
     output_dir_arg = args[-1]
     bunch_dir_args = args[:-1]
 
