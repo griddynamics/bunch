@@ -1,5 +1,8 @@
 Feature: World Test Fail
 
+    Scenario: Prepare setup
+        Requires setup "SetupShouldFailRequirement"
+
     Scenario: Say Hello to the World
         Say "Should never happen as setup should have failed!"
 

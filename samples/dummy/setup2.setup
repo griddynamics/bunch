@@ -1,0 +1,6 @@
+Feature: SETUP2 Setup
+
+    Scenario: In the beginning was the SETUP2
+        In the beginning was "the Word"
+
+

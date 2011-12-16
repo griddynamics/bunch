@@ -1,5 +1,9 @@
 Feature: World Test
 
+    Scenario: Prepare setup
+        Requires setup "setup1 setup2"
+
+
     Scenario: Say Hello to the World
         Say "Hello World!"
 
