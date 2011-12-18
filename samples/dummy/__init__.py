@@ -1,7 +1,7 @@
 
 from lettuce import step, world
 from nose.tools import assert_equals
-from bunch.serial_setup_step import requires_setup
+from bunch.special import requires_setup
 
 @step(u'Say "(.*)"')
 def CheckSaidHelloWorld(step, Phrase):
