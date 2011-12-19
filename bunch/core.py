@@ -116,10 +116,10 @@ class Bunch(object):
 
 class BunchTestStory(object):
     setup_scenario = u'Prepare setup'
-    #re_setup = re.compile(r'.*Requires setup(:[\s\S]*"""[\s\S]*""")|(".*")')
-    re_setup = re.compile(r'Requires setup:? "(.*)"')
-    re_external_setup = re.compile(r'Requires external setup:? "(.*)"')
-    #re_external_setup = re.compile(r'Requires external setup "(.*)"')
+    #re_setup = re.compile(r'.*Require setup(:[\s\S]*"""[\s\S]*""")|(".*")')
+    re_setup = re.compile(r'Require setup:? "(.*)"')
+    re_external_setup = re.compile(r'Require external setup:? "(.*)"')
+    #re_external_setup = re.compile(r'Require external setup "(.*)"')
 
     def __init__(self, test, setup=None, teardown=None):
         self.test = test
