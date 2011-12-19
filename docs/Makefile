@@ -41,6 +41,8 @@ html:
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
+osc-all: clean html osc-deploy
+
 osc-deploy:
 	rm -rf /var/www/bunch/*
 	cp -r $(BUILDDIR)/html/* /var/www/bunch

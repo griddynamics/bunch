@@ -1,37 +1,3 @@
-===============================
-Bunch Test Organizer and Runner
-===============================
-
-Bunch is tool for grouping, managing and running Lettuce scenarios. It offers explicit separation of test fixtures from test scenarios by dividing it into setup, teardown and test scripts. Bunch encourages writing clean, self-sufficient and multi-environment tests, which can be executed in parallel. It also provides more flexibility for test parameterization - test scenarios are treated as templates, which get parameterized upon execution.
-
-Features
-========
-
-Implemented features
-====================
-
-* Test parameterization via Jinja2 templates and YAML configs
-* Test fixture separation
-* xUnit XML reports. This is handy for using Bunch with CI tools
-
-
-Planned features
-================
-* Parallel test scenario execution
-* Dependencies for test fixtures: setup and teardown scripts associated with test may be shared within test bunch and between different bunches
-* Fixtures grouping by test configuration. That will help writing environment agnostic tests which require different fixture versions for each environment
-
-
-Installation
-============
-
-Just do the following::
-
-        user@machine:~/projects$ git clone  git.griddynamics.net:~skosyrev/repos/bunch
-        user@machine:~/projects$cd bunch
-        user@machine:~/projects/bunch$  python setup.py install
-
-
 Writing Tests
 =============
 
@@ -58,10 +24,14 @@ Test parameterization
 
 Every Lettuce scenarios in a bunch is considered as template. That means that scenarios may contain ``Jinja2`` template expressions. The template expression are expanded with values taken from ``config.yaml`` file. See examples below.
 
+.. highlight:: yaml
+
 If we have user item in the ``config.yaml``::
 
         user:
           name: admin1
+
+.. highlight:: gherkin
 
 Then we can use it in the ``sample_test.setup``::
 
@@ -81,8 +51,9 @@ Test Fixtures and Dependencies
 ------------------------------
 
 By default all tests are dependent from their fixtures of any. But it is possible to specify that test requires extra setup performed prior its execution. The dependency spefication is performed via special Lettuce steps in \*.test scenario::
-        
+
         Require setup: "<list of setup fixtures required>"
+
 And ::
 
         Require external setup: "<list of setup fixtures from other bunches>"
@@ -97,28 +68,3 @@ This splits fixtures into groups. All fixtures within single group are executed 
 
 The corresponding teardown scripts are executed after test is finished, so there is no need to specify that particular teardown is required.
 
-
-Running Tests
-=============
-
-Tests may be executed via `bunch` console script or via `bunch.cli.main()` function::
-
-        >>>bunch  samples/dummy results
-
-The `results` directory will contain parameterized scenarios and test results.
-
-
-Execution parallellism
-----------------------
-
-The `-b` command option controls bunch execution concurrency. It may have the following values:
-
-* `serial` - tests are executed in single thread
-* `unlimited` - all tests may be executed in parallel if possible
-* `limited<n>` - tests are executed within <n> threads
-* `auto` - tests are executed according to machine capabilities and the common sense
-
-Test Results
-============
-
-Test results are written into xUnit XML test reports. Report is generated for each test which was executed as `<testname>.result.xml`

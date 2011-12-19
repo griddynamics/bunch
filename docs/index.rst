@@ -3,8 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Bunch's documentation!
-=================================
+
+===============================
+Bunch Test Organizer and Runner
+===============================
 
 Contents:
 
@@ -12,11 +14,13 @@ Contents:
    :maxdepth: 3
 
    intro
+   features
+   installation
+   writing_tests
+   running_tests
+   test_reports
 
-Indices and tables
-==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+
+
 

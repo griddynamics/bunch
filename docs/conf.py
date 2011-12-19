@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Bunch'
-copyright = u'2011, Sergey Kosyrev'
+copyright = u'2011, Grid Dynamics'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -83,6 +83,7 @@ exclude_patterns = ['_build']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
@@ -91,7 +92,12 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'traditional'
+
+#html_theme = 'traditional'
+sys.path.append(os.path.abspath('_themes'))
+html_theme_path = ['_themes']
+html_theme = 'bootstrap'
+
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
