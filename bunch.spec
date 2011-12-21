@@ -7,7 +7,7 @@ Name:	 	python-bunch
 Version: 	0.0.1
 Release: 	1
 Source0: 	%{name}-%{version}.tar.gz
-License: 	Apache License
+License: 	GNU GPL v3+
 Group: 		Development/Languages/Python
 BuildRoot: 	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 Prefix: 	%{_prefix}
