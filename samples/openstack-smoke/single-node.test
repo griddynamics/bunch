@@ -1,32 +1,11 @@
-Feature: Create user, project, network via python-novaclient CLI
-    Register and upload images, upload key-pair and start instances using python-novaclient
+Feature: Start instance(s) in single node deployment using  python-novaclient CLI
+    In order to smoke test OpenStack build
+    As tester
+    I want to register start instance and verify it is up and available via SSH
 
-    Scenario: Create admin user
-        Given every service is running:
-            | ServiceName   |
-            {% for service in openstack_services %}
-            | {{ service }} |
-            {% endfor %}
-        When I create nova admin user "{{user.name}}"
-        Then nova user "{{user.name}}" exists
+    Scenario: Setup prerequisites
+        Require setup "single-node ! users ! network ! images"
 
-    Scenario: Create project
-        Given nova user "{{user.name}}" exists
-        When I create nova project "{{project.name}}" for user "{{user.name}}"
-        Then nova project "{{project.name}}" exists
-        And nova user "{{user.name}}" is the manager of the nova project "{{project.name}}"
-
-    Scenario: Create network
-        Given nova project "{{project.name}}" exists
-        When I create nova network "{{network.cidr}}" with "{{network.nets}}" nets, "{{network.ips}}" IPs per network
-        Then nova network "{{network.cidr}}" exists
-
-    Scenario: Upload and register images
-        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
-        And VM image tarball is available at "{{image.url}}"
-        When I download VM image tarball at "{{image.url}}" and unpack it
-        And I register VM image "{{image.name}}" for owner "{{user.name}}" using disk "{{image.disk}}", ram "{{image.ram}}", kernel "{{image.kernel}}"
-        Then VM image "{{image.name}}" is registered
 
     Scenario: Register keypair
         Given novarc for project "{{project.name}}", user "{{user.name}}" is available

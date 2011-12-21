@@ -319,7 +319,7 @@ class nova_cli(object):
             path  = os.path.join(destination, 'novarc.zip')
             out = bash('sudo nova-manage project zipfile %s %s %s' % (project, user, path))
             if out.successful():
-                out = bash("unzip %s -d %s" % (path,destination))
+                out = bash("unzip -uo %s -d %s" % (path,destination))
                 if out.successful() and new_novarc.load(os.path.join(destination, 'novarc')):
                     nova_cli.__novarc = new_novarc
 

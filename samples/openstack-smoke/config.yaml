@@ -62,13 +62,13 @@ instance1: ins1
 instance2: ins2
 
 openstack_services:
- - openstack-nova-api
- - openstack-nova-direct-api
- - openstack-nova-compute
- - openstack-nova-network
- - openstack-nova-scheduler
- - openstack-glance-api
- - openstack-glance-registry
+ - nova-api
+ - nova-direct-api
+ - nova-compute
+ - nova-network
+ - nova-scheduler
+ - glance-api
+ - glance-registry
 
 supplementary_services:
  - rabbitmq-server

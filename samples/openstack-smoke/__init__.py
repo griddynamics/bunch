@@ -2,7 +2,7 @@ from lettuce import step, world
 from nose.tools import assert_equals, assert_true, assert_false
 import utils
 import os
-
+import bunch.special
 
 path = os.path.abspath(__file__)
 dir_path = os.path.dirname(path)
