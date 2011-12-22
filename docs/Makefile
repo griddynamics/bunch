@@ -6,6 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
+DOCSERVER     = resources.os-core.c4gd.griddynamics.net
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
@@ -41,11 +42,10 @@ html:
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
-osc-all: clean html osc-deploy
+osc-all: clean html osc-deploy clean
 
 osc-deploy:
-	rm -rf /var/www/bunch/*
-	cp -r $(BUILDDIR)/html/* /var/www/bunch
+	rsync -avz -e ssh  $(BUILDDIR)/html/ ${DOCSERVER}:/var/www/docs/bunch
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
