@@ -7,6 +7,7 @@ SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
 DOCSERVER     = resources.os-core.c4gd.griddynamics.net
+SHELL         = /bin/bash
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
@@ -45,7 +46,20 @@ html:
 osc-all: clean html osc-deploy clean
 
 osc-deploy:
-	rsync -avz -e ssh  $(BUILDDIR)/html/ ${DOCSERVER}:/var/www/docs/bunch
+	#rsync -avz -e ssh  $(BUILDDIR)/html/ ${DOCSERVER}:/var/www/docs/bunch
+	$(eval TMP = $(shell mktemp --suffix=.bunch -d))
+	@/bin/bash -xc  "\
+	pushd $(TMP); \
+	git clone www@$(DOCSERVER):www; \
+	mkdir -p  www/docs/bunch; \
+	popd; \
+	cp -r $(BUILDDIR)/html/* $(TMP)/www/docs/bunch; \
+	pushd $(TMP)/www; \
+	git add docs/bunch; \
+	git commit -m 'Bunch documentation updated'; \
+	git push origin master; \
+	popd;" 
+	rm -rf $(TMP)
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
