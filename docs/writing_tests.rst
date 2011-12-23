@@ -21,7 +21,7 @@ Tests are grouped into bunches. All tests in a bunch are considered to be indepe
 
 ``config.yaml`` is bunch-wide configuration file containing parameter values for scenario templates.
 
-Test parameterization
+Test parametrization
 ---------------------
 
 Every Lettuce scenarios in a bunch is considered as template. That means that scenarios may contain ``Jinja2`` template expressions. The template expression are expanded with values taken from ``config.yaml`` file. See examples below.
@@ -58,7 +58,7 @@ Then we can use it in the ``users.setup``::
                     Then nova user "{{user.name}}" exists
 
 .. highlight:: bash
-The presence of bunch config and templates is not necessary. If ommitted then no parameterization is performed. It is also possible to use some global config file for each bunch execution::
+The presence of bunch config and templates is not necessary. If omitted then no parametrization is performed. It is also possible to use some global config file for each bunch execution::
 
         user@machine:~/tests$bunch -c /pathto/config  bunch_tests_dir results_dir
 
@@ -68,7 +68,7 @@ The global config file can be used along with local per-bunch configs. In that c
 Test Fixtures and Dependencies
 ------------------------------
 .. highlight:: gherkin
-By default all tests are dependent from their fixtures if any. But it is possible to specify that test requires extra setup performed prior its execution. The dependency spefication is performed via special Lettuce steps in \*.test scenario::
+By default all tests are dependent from their fixtures if any. But it is possible to specify that test requires extra setup performed prior its execution. The dependency specification is performed via special Lettuce steps in \*.test scenario::
 
         Scenario: Setup prerequisites
             Require setup: "<list of setup fixtures required>"
@@ -78,13 +78,13 @@ And ::
         Scenario: Setup prerequisites
             Require external setup: "<list of setup fixtures from other bunches>"
 
-The `<list of setup fixtures required>` is the white-space or newline separated list of fixture names which should be executed and return successful result before test run. Setup scripts may be executed in parrallel and started in the order specified in the "Require setup:" statement. Often setup actions rely on each other and so should be executed sequentially. For that reason syncronization quantifier may be used. Just put exclamation mark between fixture names, to specify the point of syncronization::
+The `<list of setup fixtures required>` is the white-space or newline separated list of fixture names which should be executed and return successful result before test run. Setup scripts may be executed in parallel and started in the order specified in the "Require setup:" statement. Often setup actions rely on each other and so should be executed sequentially. For that reason syncronization quantifier may be used. Just put exclamation mark between fixture names, to specify the point of syncronization::
 
         setup1 ! setup2 setup3 ! setup_final
 
 This splits fixtures into groups. All fixtures within single group are executed in parallel. Also it is possible to make it run sequentially in specific order::
 
-        setup1 ! setup2 ! setup3! setup_final
+        setup1 ! setup2 ! setup3 ! setup_final
 
 The corresponding teardown scripts are executed after test is finished, so there is no need to specify that particular teardown is required.
 

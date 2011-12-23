@@ -16,7 +16,7 @@ Use option '-e' to specify test environment for test execution. This option cont
 
         $bunch -e clean samples/openstack-smoke/ rez2
 
-Execution parallellism
+Execution parallelism
 ----------------------
 
 The `-b` command option controls bunch execution concurrency. It may have the following values:
