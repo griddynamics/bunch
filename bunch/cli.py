@@ -5,26 +5,7 @@ import sys
 import os
 from optparse import OptionParser
 from bunch.core import SerialBunchRunner, Bunch
-
-
-def usage():
-    print sys.argv
-    print """\
-%prog -- executes bunches of lettuce .feature files
-usage: %prog [options] [bunch_dir]... result_dir
-
-    bunch_dir - one or more bunches/tests to execute
-    result_dir - destination directory for pesonalized feature files and test results
-
-    options:
-    -c|--config[=config.yaml] - Reads global config file before bunch execution
-    -e|--environment=<name> - Run fixtures for specific environment
-    -b|--bunch-concurrency=serial|full|limited
-
-
-"""
-
-
+from bunch import version
 
 def main():
 
@@ -33,8 +14,8 @@ def main():
             return path
         return os.path.abspath(path)
 
-
-    parser = OptionParser()
+    parser = OptionParser(usage="bunch [OPTION]... BUNCH_DIR... RESULT_DIR",
+                          version=version)
     parser.add_option("-c", "--config", action="store", type="string",
                       dest="config", default='config.yaml', metavar="FILE",
                       help="YAML config file")
@@ -46,8 +27,7 @@ def main():
                       help="This option indicates type of test fixtures intended for environment NAME", metavar="NAME")
     (options, args) = parser.parse_args()
 
-
-    if len(args) <= 1:  parser.usage(); sys.exit(2)
+    if len(args) <= 1:  parser.print_help(); sys.exit(2)
     output_dir_arg = args[-1]
     bunch_dir_args = args[:-1]
 
