@@ -157,7 +157,7 @@ class BunchTestStory(object):
             return name+"."+env
 
         def select_existing(name_list, name, env):
-            if name_with_env(name, env) in name_list:
+            if env is not None and name_with_env(name, env) in name_list:
                 return name_with_env(name, env)
 
             return name if name in name_list else None
