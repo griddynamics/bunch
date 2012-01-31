@@ -9,4 +9,11 @@ class BunchException(Exception):
     """
 
     pass
-  
+
+
+class CyclicDependencySpecification(BunchException):
+    """
+    Thrown when it is impossible to figure out linear sequence of execution
+    for test fixtures.
+    """
+    pass

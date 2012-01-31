@@ -1,4 +1,4 @@
-from multiprocessing import Event
+
 
 class BaseFixtureRunner(object):
     def __init__(self, id):

@@ -1,4 +1,4 @@
-
+from itertools import chain
 import os
 import sys
 import re
@@ -10,7 +10,8 @@ from lettuce import Feature
 from xml.dom import minidom
 import subprocess
 import pprint
-
+from bunch import dependencies
+from bunch.exceptions import CyclicDependencySpecification
 
 
 class FeaturePersonalizer(object):
@@ -182,6 +183,38 @@ class BunchTestStory(object):
 
         return map(fixture_env_select, name_list)
 
+    def __get_dependency_groups(self, type_suffix, default_fixture=None, env_name=None):
+        def split_list(lst, pivot):
+            remainder = lst
+            result = []
+            while pivot in remainder:
+                idx = remainder.index(pivot)
+                result.append(remainder[:idx])
+                remainder = remainder[idx+1:]
+            result.append(remainder)
+            return result
+
+        fixture_reqs = self.__get_setup_requirements()
+        req_groups = filter(None, split_list(fixture_reqs, '!'))
+        dep_groups = [filter(None, self.__get_dependencies(group, os.path.dirname(self.test),type_suffix, env_name))
+                    for group in req_groups]
+        #filter out places of missing fixtures
+        dep_groups = filter(None, dep_groups)
+
+        if default_fixture is not None:
+            default_group = [default_fixture]
+            if default_group not in dep_groups:
+                dep_groups.append(default_group)
+        return dep_groups
+
+    def get_setup_dependency_groups(self, env_name=None):
+        test, setup, teardown = self.get_test_triplet(env_name)
+        return self.__get_dependency_groups(".setup", setup, env_name)
+
+    def get_teardown_dependency_groups(self, env_name=None):
+        test, setup, teardown = self.get_test_triplet(env_name)
+        return list(reversed(self.__get_dependency_groups(".teardown", teardown, env_name)))
+
     def get_test_setup_dependencies(self, env_name=None):
         return self.__get_dependencies(filter(lambda x: '!' not in x, self.__get_setup_requirements()),
                                     os.path.dirname(self.test),
@@ -225,13 +258,64 @@ class SerialBunchRunner(object):
         pp.pprint(fixture_pairs)
         pp.pprint(test)
 
+    def __print_cyclic_dependencies_error(self, cycle_details, name):
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint("bunch {name} execution skipped due to cyclic dependencies found:".format(name=name))
+        pp.pprint(cycle_details)
+
+    def __get_fixture_deps(self, stories):
+        return [story.get_setup_dependency_groups(self.env_name) for story in stories], \
+               [ story.get_teardown_dependency_groups(self.env_name) for story in stories]
+
+    def __run_fixtures(self, groups, results_name, stop_on_failure=True):
+        results = XmlResultCollector()
+        for group in groups:
+            for script in group:
+                if not results.all_successful() and stop_on_failure:
+                    break
+                self.__run_lettuce(LettuceRunner(script, self.args), results)
+        results.dump(results_name)
+        return results.all_successful()
+
+    def __run_stories(self, stories):
+        none_failed = True
+        for story in stories:
+            result = XmlResultCollector()
+            self.__run_lettuce(LettuceRunner(story.test, self.args), result)
+            none_failed = none_failed and result.all_successful()
+            result.dump(self.__save_path_for_test(story.test))
+        return none_failed
+
 
     def run(self):
         none_failed = True
         for bunch in self.bunch_list:
             stories = bunch.get_stories()
+            setup_deps, teardown_deps = self.__get_fixture_deps(stories)
+            try:
+                setup_seq = dependencies.combine_fixture_deps(setup_deps)
+                teardown_seq = dependencies.combine_fixture_deps(teardown_deps)
+            except CyclicDependencySpecification as cycle_error:
+                self.__print_cyclic_dependencies_error(cycle_error, bunch.name())
+                continue
+            #Now perform all setup
+
+            if self.__run_fixtures(setup_seq, self.__save_path_for_test(os.path.join(bunch.deploy_dir,"setup"))):
+                #setup passed, execute tests
+                none_failed = none_failed and self.__run_stories(stories)
+            else:
+                none_failed = False
+
+            #Now execute teardown disregarding setup results and ignoring script failures
+            self.__run_fixtures(teardown_seq,
+                self.__save_path_for_test(os.path.join(bunch.deploy_dir,"teardown")), False)
+        return none_failed
+
+    def run_old(self):
+        none_failed = True
+        for bunch in self.bunch_list:
+            stories = bunch.get_stories()
             for story in stories:
-                #TODO: add detection of intersecting fixtures, execute all fixtures first, then do tests, then teardown
                 fixtures = story.get_fixtures(self.env_name)
                 results = XmlResultCollector()
                 teardown_list = []
@@ -255,10 +339,6 @@ class SerialBunchRunner(object):
                 results.dump(self.__save_path_for_test(story.test))
 
         return none_failed
-
-
-
-
 
 
 class XmlResultCollector(object):
@@ -316,7 +396,6 @@ class XmlResultCollector(object):
 
         rez_doc.appendChild(root)
         return rez_doc.toxml()
-
 
 
 class LettuceRunner(object):
