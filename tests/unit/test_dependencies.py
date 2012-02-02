@@ -1,7 +1,7 @@
 from bunch.exceptions import CyclicDependencySpecification
 from nose.tools import assert_equals, assert_raises
 from bunch.dependencies import combine_fixture_deps, dependency_lists_to_pairs, dependency_groups_to_pairs
-from asserts import assert_element_wise_equals, flatten, print_iterable
+from tests.asserts import assert_element_wise_equals, flatten, print_iterable
 
 def test_deplist_to_pairs():
     deplist1 = ['adf', 'abc', 'gh', 'ceg', 'bdeh']

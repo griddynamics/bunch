@@ -4,7 +4,11 @@ import os
 import sys
 from bunch import version
 from setuptools import setup
+from string import strip
 
+def get_dependencies():
+    with open('dependencies.txt', 'r') as file:
+        return map(lambda x: strip(x, ' \n'), file.readlines())
 
 def get_packages():
     packages = []
@@ -14,7 +18,7 @@ def get_packages():
 
     return packages
 
-required_modules = ['lettuce', 'jinja2']
+required_modules = get_dependencies()
 
 setup(name='bunch',
     version=version,

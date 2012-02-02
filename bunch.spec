@@ -13,7 +13,7 @@ BuildRoot: 	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 Prefix: 	%{_prefix}
 BuildArch: 	noarch
 Url: 		http://github.com/TODO
-BuildRequires:  python-setuptools, python-sphinx
+BuildRequires:  python-setuptools, python-sphinx, python-lettuce, python-jinja2, PyYAML, python-nose
 Requires: 	python-lettuce, python-jinja2, PyYAML, python-nose
 
 %description
@@ -36,6 +36,9 @@ make man
 cd ../
 
 %{__python} setup.py build
+
+%check
+make check
 
 %install
 mkdir -p %{buildroot}/%{_mandir}/man1
