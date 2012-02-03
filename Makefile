@@ -23,5 +23,5 @@ unit: clean
 
 clean:
 	@printf "Cleaning up files that are already in .gitignore... "
-	@for pattern in `cat .gitignore | grep -v idea`; do find . -path "$$pattern" -delete; done
+	@for pattern in `cat .gitignore `; do find . -path "$$pattern" | xargs rm -rf; done
 	@echo "OK!"
