@@ -18,7 +18,8 @@ def get_packages():
 
     return packages
 
-required_modules = get_dependencies()
+#required_modules = get_dependencies()
+required_modules = []
 
 setup(name='bunch',
     version=version,
