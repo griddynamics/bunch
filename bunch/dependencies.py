@@ -13,19 +13,23 @@ def dependency_lists_to_pairs(dependency_lists):
 def dependency_groups_to_pairs(groups):
     return chain(*(product(a,b) for a,b in pairwise(groups)))
 
+
+
 def split_solitaries(deps):
     solitaries = []
     linked = []
     for dep in deps:
-        if len(dep) == 1 and len(dep[0]) == 1:
+        if len(dep) == 1 and len(dep[0]) > 0:
             solitaries.append(dep[0])
         else:
             linked.append(dep)
     return solitaries, linked
 
+def filter_empties(deps):
+    return filter(None, deps)
 
 def combine_fixture_deps(deps):
-    solitary, linked = split_solitaries(deps)
+    solitary, linked = split_solitaries(filter_empties(deps))
     try:
         result = [group for group in topsort_levels(chain(*map(dependency_groups_to_pairs, linked)))]
         result.extend(solitary)

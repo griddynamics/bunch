@@ -29,6 +29,8 @@ def test_dependency_grops_to_pairs():
         list(dependency_groups_to_pairs([[1, 2], [3, 4], [5, 6]])),
         [(1, 3), (1, 4), (2, 3), (2, 4), (3, 5), (3, 6), (4, 5), (4, 6)])
 
+#TODO: Convert flattened assert to structured one when concurrent is ready
+
 def test_combine_fixtures_basic():
     grouplist1 = [
         [   ['single-node'],
@@ -62,3 +64,69 @@ def test_combine_fixtures_cyclic():
     #print_iterable(combine_fixture_deps(grouplist2))
     assert_raises(CyclicDependencySpecification, combine_fixture_deps, grouplist2)
 
+def test_one_solitary_dep():
+    grouplist = [
+        [   ['one'] ]  ]
+    assert_equals(list(flatten(combine_fixture_deps(grouplist))), ['one'])
+
+def test_several_solitary_deps():
+    grouplist = [
+        [   ['one'] ], [   ['two'] ], [   ['three'] ]  ]
+    assert_equals(list(flatten(combine_fixture_deps(grouplist))), ['one', 'two', 'three'])
+
+def test_empty_deps():
+    grouplist = [
+        [ [] ]  ]
+    assert_equals(list(flatten(combine_fixture_deps(grouplist))), [])
+
+def test_several_empty_deps():
+    grouplist = [
+        [ [] ]  ]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        [])
+
+def test_empties_and_solitaries_deps():
+    grouplist = [
+        [ [] ], [   ['one'] ], [ [] ], [   ['two'] ], [ [] ],[   ['three'] ], [ [] ]  ]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        ['one', 'two', 'three'])
+
+def test_empties_solitaries_and_usual_deps():
+    grouplist = [
+        [ [] ], [   ['one'] ], [ [] ], [   ['two'] ], [ [] ],[   ['three'] ], [ [] ], [['four'], ['five'], ['six']], [ [] ]  ]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        ['four', 'five', 'six', 'one', 'two', 'three'])
+
+def test_independent_deps():
+    grouplist = [
+        [ ['1','2','3'], ['4'], ['5'] ]   ]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        ['1', '3', '2', '4', '5'])
+
+def test_independent_single_deps():
+    grouplist = [
+        [ ['1','2','3' ,'4', '5'] ]   ]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        ['1', '2', '3', '4', '5'])
+
+def test_empties_solitaries_indepent_and_usual_deps():
+    grouplist = [
+        [ [] ],
+        [ ['one'] ],
+        [ [] ],
+        [ ['two'] ],
+        [ [] ],
+        [ ['three'] ],
+        [ [] ],
+        [ ['four'], ['five'], ['six']],
+        [ [] ],
+        [ ['seven','eight', 'nine'] ],
+        [ [] ] ]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        ['four', 'five', 'six', 'one', 'two', 'three', 'seven', 'eight', 'nine'])
