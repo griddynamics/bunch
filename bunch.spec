@@ -4,7 +4,7 @@
 
 Summary: 	Bunch test organizer for Lettuce
 Name:	 	python-bunch
-Version: 	0.0.1
+Version: 	0.0.2
 Release: 	1
 Source0: 	%{name}-%{version}.tar.gz
 License: 	GNU GPL v3+
@@ -54,6 +54,8 @@ rm -rf %{buildroot}
 %doc %{_mandir}/man1/bunch.1.gz
 
 %changelog
+* Thu Feb 16 2012 skosyrev@griddynamics.com
+- Increased version to 0.0.2
+- Changed default fixture logic. Now they are executed along with test. Common dependency fixtures are executed before and after all tests
 * Fri Dec 16 2011 skosyrev@griddynamics.com
 - First package at version 0.0.1
-

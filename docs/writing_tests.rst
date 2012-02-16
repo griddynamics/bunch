@@ -68,7 +68,8 @@ The global config file can be used along with local per-bunch configs. In that c
 Test Fixtures and Dependencies
 ------------------------------
 .. highlight:: gherkin
-By default all tests are dependent from their fixtures if any. But it is possible to specify that test requires extra setup performed prior its execution. The dependency specification is performed via special Lettuce steps in \*.test scenario::
+Every test may have optional setup and teardown fixtures having file names ended with `.setup` and `.teardown` respectively. In that case test `<name>.setup` should be executed before `<name>.test` and `<name>.teardown` should be executed immediately after test script.
+However it is possible to specify that test requires extra setup performed prior its execution. The dependency specification is performed via special Lettuce steps in \*.test scenario::
 
         Scenario: Setup prerequisites
             Require setup: "<list of setup fixtures required>"
@@ -86,7 +87,16 @@ This splits fixtures into groups. All fixtures within single group are executed 
 
         setup1 ! setup2 ! setup3 ! setup_final
 
+If dependency list mentions default fixture of some test `foo` then it is executed according to resolved dependency sequence. Its setup/teadown are not executed immediately before and after test::
+
+        Specification "setup1 ! setup2 ! foo ! setup_final"
+        gives sequence "setup1 -> setup2 -> foo.setup -> setup_final -> foo -> teardown_final -> foo.teardown -> teardown2 -> teardown1"
+        and "setup1 ! setup2 ! setup_final "  results in "setup1 -> setup2 -> setup_final -> foo.setup -> foo -> foo.teardown -> teardown_final -> teardown2 -> teardown1"
+
 The corresponding teardown scripts are executed after test is finished, so there is no need to specify that particular teardown is required.
+Dependency specification mechanism allows to reuse and share common routines for environment setup. That also gives fully documented software configutation procedure.
+
+
 
 
 Sample tests

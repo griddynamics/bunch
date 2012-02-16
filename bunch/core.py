@@ -1,4 +1,3 @@
-from itertools import chain
 import os
 import sys
 import re
@@ -183,7 +182,7 @@ class BunchTestStory(object):
 
         return map(fixture_env_select, name_list)
 
-    def __get_dependency_groups(self, type_suffix, default_fixture=None, env_name=None):
+    def __get_dependency_groups(self, type_suffix, env_name=None):
         def split_list(lst, pivot):
             remainder = lst
             result = []
@@ -201,19 +200,13 @@ class BunchTestStory(object):
         #filter out places of missing fixtures
         dep_groups = filter(None, dep_groups)
 
-        if default_fixture is not None:
-            default_group = [default_fixture]
-            if default_group not in dep_groups:
-                dep_groups.append(default_group)
         return dep_groups
 
     def get_setup_dependency_groups(self, env_name=None):
-        test, setup, teardown = self.get_test_triplet(env_name)
-        return self.__get_dependency_groups(".setup", setup, env_name)
+        return self.__get_dependency_groups(".setup", env_name)
 
     def get_teardown_dependency_groups(self, env_name=None):
-        test, setup, teardown = self.get_test_triplet(env_name)
-        return list(reversed(self.__get_dependency_groups(".teardown", teardown, env_name)))
+        return list(reversed(self.__get_dependency_groups(".teardown", env_name)))
 
     def get_test_setup_dependencies(self, env_name=None):
         return self.__get_dependencies(filter(lambda x: '!' not in x, self.__get_setup_requirements()),
@@ -277,17 +270,40 @@ class SerialBunchRunner(object):
         results.dump(results_name)
         return results.all_successful()
 
-    def __run_stories(self, stories):
+    def __deps_contain(self, deps, fixture):
+        for group in deps:
+            if fixture in group:
+                return True
+        return False
+
+    def __exec_default_fixture(self, fixture, result, deps):
+        if not self.__deps_contain(deps, fixture):
+            return self.__run_lettuce(LettuceRunner(fixture, self.args), result) and result.all_successful()
+        return True
+
+    def __run_story(self, story, setup_seq, teardown_seq):
+        result = XmlResultCollector()
+        test, setup, teardown = story.get_test_triplet(self.env_name)
+        if setup:
+            self.__exec_default_fixture(setup, result, setup_seq)
+        if result.all_successful():
+            self.__run_lettuce(LettuceRunner(test, self.args), result)
+        if teardown:
+            self.__exec_default_fixture(teardown, result, teardown_seq)
+        result.dump(self.__save_path_for_test(story.test))
+        return result.all_successful()
+
+    def __run_stories(self, stories, setup_seq, teardown_seq):
         none_failed = True
         for story in stories:
-            result = XmlResultCollector()
-            self.__run_lettuce(LettuceRunner(story.test, self.args), result)
-            none_failed = none_failed and result.all_successful()
-            result.dump(self.__save_path_for_test(story.test))
+            none_failed = none_failed and self.__run_story(story, setup_seq, teardown_seq)
         return none_failed
 
 
     def run(self):
+        """
+        Execute set of test bunches sequentially
+        """
         none_failed = True
         for bunch in self.bunch_list:
             stories = bunch.get_stories()
@@ -302,7 +318,7 @@ class SerialBunchRunner(object):
 
             if self.__run_fixtures(setup_seq, self.__save_path_for_test(os.path.join(bunch.deploy_dir,"setup"))):
                 #setup passed, execute tests
-                none_failed = none_failed and self.__run_stories(stories)
+                none_failed = none_failed and self.__run_stories(stories, setup_seq, teardown_seq)
             else:
                 none_failed = False
 
@@ -311,34 +327,6 @@ class SerialBunchRunner(object):
                 self.__save_path_for_test(os.path.join(bunch.deploy_dir,"teardown")), False)
         return none_failed
 
-    def run_old(self):
-        none_failed = True
-        for bunch in self.bunch_list:
-            stories = bunch.get_stories()
-            for story in stories:
-                fixtures = story.get_fixtures(self.env_name)
-                results = XmlResultCollector()
-                teardown_list = []
-                self.__print_story_scripts_to_run(fixtures, story.test)
-                for setup, teardown in fixtures:
-                    if setup is not None:
-                        if teardown is not None:
-                            teardown_list.append(teardown)
-                        #Stop ASAP when setup failed
-                        if not results.all_successful():
-                            break
-                        self.__run_lettuce(LettuceRunner(setup, self.args), results)
-
-                self.__run_lettuce(LettuceRunner(story.test, self.args), results)
-                #do not gather teardown errors
-                none_failed = none_failed and results.all_successful()
-
-                for teardown in reversed(teardown_list):
-                    self.__run_lettuce(LettuceRunner(teardown, self.args), results)
-
-                results.dump(self.__save_path_for_test(story.test))
-
-        return none_failed
 
 
 class XmlResultCollector(object):
@@ -406,6 +394,14 @@ class LettuceRunner(object):
     def __xml_report_file(self):
         return os.path.join(os.path.dirname(self.script), "result.xml")
 
+    def __exec_cmd(self, args):
+        #return subprocess.call(args)
+        process = subprocess.Popen(args,stdout = sys.stdout, stderr = sys.stderr)
+        output,error = process.communicate()
+        return process.poll()
+
+
+
     def run(self):
         new_args = []
         new_args.extend(self.args)
@@ -419,7 +415,7 @@ class LettuceRunner(object):
         lettuce_cmd_line = ["lettuce"]
         lettuce_cmd_line.extend(sys.argv[1:])
 
-        retcode = subprocess.call(lettuce_cmd_line)
+        retcode = self.__exec_cmd(lettuce_cmd_line)
         return retcode == 0
         
 
