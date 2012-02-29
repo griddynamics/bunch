@@ -1,0 +1,11 @@
+Feature: Register SSH keys using  python-novaclient CLI
+    In order to have access to VM instances
+    As tester
+    I want to register SSH keys via python-novaclient CLI tools
+
+
+    Scenario: Register existing keypair from file
+        Given novarc for project "project1", user "admin1" is available
+        When I generate keypair saving it to file "id_rsa_generated"
+        And I add keypair with name "test_key" from file "id_rsa_generated.pub"
+        Then keypair with name "test_key" exists

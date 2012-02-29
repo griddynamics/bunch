@@ -1,0 +1,49 @@
+Feature: Change uniq-names flag and check it works
+    In order to smoke test OpenStack build
+    As tester
+
+    Scenario: Enable uniq names flag in nova.conf
+        Then every service is running:
+                                      | ServiceName   |
+                                      
+                                      | nova-api |
+                                      
+                                      | nova-direct-api |
+                                      
+                                      | nova-compute |
+                                      
+                                      | nova-network |
+                                      
+                                      | nova-scheduler |
+                                      
+                                      | glance-api |
+                                      
+                                      | glance-registry |
+                                      
+        When I change flag file "/etc/nova/nova.conf" by setting flag values:
+                                      |     Name             | Value |
+                                      | --project_uniq_names | true  |
+        And I restart services:
+                                      |     ServiceName    |
+                                      
+                                      | nova-api        |
+                                      
+                                      | nova-direct-api        |
+                                      
+                                      | nova-compute        |
+                                      
+                                      | nova-network        |
+                                      
+                                      | nova-scheduler        |
+                                      
+                                      | glance-api        |
+                                      
+                                      | glance-registry        |
+                                      
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+            |  Command                            | Expected  |
+            |  sudo killall dnsmasq \|\| echo     |  noFail  |
+            |  sudo service nova-network restart  |  noFail  |

@@ -1,0 +1,19 @@
+Feature: Create user and project using python-novaclient CLI
+    In order to prepare environment for smoke test
+    As cloud admin
+    I want to register images
+
+#    Scenario: Upload, unpack and register image from url
+#        Given novarc for project "project1", user "admin1" is available
+#        And VM image tarball is available at "http://osc-build.vm.griddynamics.net/images/rhel_image.tar.gz"
+#        When I download VM image tarball at "http://osc-build.vm.griddynamics.net/images/rhel_image.tar.gz" and unpack it
+##        And using glance I register VM image "rhel_image" for owner "admin1" using disk "rootfs.raw", ram "initramfs-2.6.32-131.0.15.el6.x86_64.img", kernel "vmlinuz-2.6.32-131.0.15.el6.x86_64"
+#        And using nova-manage I register VM image "rhel_image" for owner "admin1" using disk "rootfs.raw", ram "initramfs-2.6.32-131.0.15.el6.x86_64.img", kernel "vmlinuz-2.6.32-131.0.15.el6.x86_64"
+#        Then VM image "rhel_image" is registered
+
+    Scenario: Upload and register solid images
+        Given novarc for project "project1", user "admin1" is available
+        And VM image tarball is available at "http://osc-build.vm.griddynamics.net/images/mini_image.img"
+        When I download VM image tarball at "http://osc-build.vm.griddynamics.net/images/mini_image.img"
+        And using nova-manage I register VM image "solid_mini_image" for owner "admin1" using disk "mini_image.img"
+        Then VM image "solid_mini_image" is registered

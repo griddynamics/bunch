@@ -1,0 +1,56 @@
+Feature: Remove services installed to test nova volumes
+    In order to test volume functionality
+    As tester
+    I want to remove services
+
+
+    Scenario: Stop iscsi and nova-volume services
+        Given current user can execute sudo without password
+        When I stop services:
+            | ServiceName   |
+            
+            | tgtd |
+            
+            
+            | nova-volume |
+            
+        Then every service is stopped:
+            | ServiceName   |
+            
+            | tgtd |
+            
+            
+            | nova-volume |
+            
+
+    Scenario: Remove created volumes
+        Given every service is stopped:
+            | ServiceName   |
+            
+            | tgtd |
+            
+        When I remove lvm group "nova-volumes" on device "/dev/loop4"
+        And I remove loop device "/dev/loop4"
+        Then I see lvm group "nova-volumes" on device "/dev/loop4" removed
+        And I see loop device "/dev/loop4" removed
+
+
+
+
+# BAD Idea. Removes all openstack
+#    Scenario: Remove packages
+#        Given current user can execute sudo without password
+#        When I remove RPM package(s):
+#            | PackageName   |
+#            
+#            | scsi-target-utils |
+#            
+#            | lvm2 |
+#            
+#        Then every RPM package is not installed:
+#            | PackageName   |
+#            
+#            | scsi-target-utils |
+#            
+#            | lvm2 |
+#            

@@ -1,0 +1,319 @@
+Feature: Install OpenStack from scratch on clean environment
+
+    Scenario: Setup yum repositories
+        Given current user can execute sudo without password
+#        When I setup OpenStack repository "openstack-rhel" for environment "stable_horizon_1"
+        And I clean yum cached data
+        Then yum repository with id "openstack-rhel" is configured
+
+
+    Scenario: Install packages
+        Given current user can execute sudo without password
+        And every RPM package available:
+            | PackageName   |
+            
+            | tar |
+            
+            | grep |
+            
+            | sed |
+            
+            | gawk |
+            
+            | unzip |
+            
+            | openssh-clients |
+            
+            | openssh |
+            
+            | nc |
+            
+            | wget |
+            
+            | curl |
+            
+            | nmap |
+            
+            | pexpect |
+            
+            | nova2ools |
+            
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+        When I install RPM package(s):
+            | PackageName   | 
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+            
+            | tar |
+            
+            | grep |
+            
+            | sed |
+            
+            | gawk |
+            
+            | unzip |
+            
+            | openssh-clients |
+            
+            | openssh |
+            
+            | nc |
+            
+            | wget |
+            
+            | curl |
+            
+            | nmap |
+            
+            | pexpect |
+            
+            | nova2ools |
+            
+        Then every RPM package is installed:
+            | PackageName   |
+            
+            | tar |
+            
+            | grep |
+            
+            | sed |
+            
+            | gawk |
+            
+            | unzip |
+            
+            | openssh-clients |
+            
+            | openssh |
+            
+            | nc |
+            
+            | wget |
+            
+            | curl |
+            
+            | nmap |
+            
+            | pexpect |
+            
+            | nova2ools |
+            
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+
+    Scenario: Start supplementary services
+        Given every RPM package is installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+        When I start services:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+
+    Scenario: Setup MySQL database
+        Given every service is running:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        When I set MySQL root password to "nova"
+        And I create MySQL database "nova"
+        And I grant all privileges on database "nova" to user "nova" identified by password "nova" at hosts:
+            | Hostname       |
+            
+            | localhost |
+            
+            | 172.18.40.10 |
+            
+        And I grant all privileges on database "nova" to user "nova" identified by password "nova" locally
+        Then MySQL database "nova" exists
+        And user "nova" has all privileges on database "nova"
+
+    Scenario: Configure OpenStack compute
+        Given every RPM package is installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+        When I change flag file "/etc/nova/nova.conf" by setting flag values:
+            | Name                      | Value                                         |
+            | --verbose                 | true                                          |
+            | --vlan_interface          | bond0                         |
+            | --sql_connection          | mysql://nova:nova@172.18.40.10/nova     |
+            | --ec2_url                 | http://172.18.40.10:8773/services/Cloud |
+            | --s3_host                 | 172.18.40.10                            |
+            | --cc_host                 | 172.18.40.10                            |
+            | --rabbit_host             | 172.18.40.10                            |
+            | --sql_connection          | mysql://nova:nova@172.18.40.10/nova     |
+            | --glance_api_servers      | 172.18.40.10:9292                       |
+            | --vncproxy_url            | http://172.18.40.10::6080               |
+         Then the following flags in file "/etc/nova/nova.conf" are set to:
+            | Name                      | Value                                         |
+            | --verbose                 | true                                          |
+            | --vlan_interface          | bond0                         |
+            | --sql_connection          | mysql://nova:nova@172.18.40.10/nova     |
+            | --ec2_url                 | http://172.18.40.10:8773/services/Cloud |
+            | --s3_host                 | 172.18.40.10                            |
+            | --cc_host                 | 172.18.40.10                            |
+            | --rabbit_host             | 172.18.40.10                            |
+            | --sql_connection          | mysql://nova:nova@172.18.40.10/nova     |
+            | --glance_api_servers      | 172.18.40.10:9292                       |
+            | --vncproxy_url            | http://172.18.40.10::6080               |
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+            |  Command                            | Expected |
+            |  sudo killall dnsmasq \|\| echo     |  noFail  |
+            |  sudo service nova-network restart  |  noFail  |
+
+
+    Scenario: Start OpenStack services
+        Given every service is running:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        And MySQL database "nova" exists
+        And user "nova" has all privileges on database "nova"
+        When I perform Nova DB sync
+        And I start services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            

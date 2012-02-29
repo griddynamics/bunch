@@ -35,7 +35,7 @@ class FeaturePersonalizer(object):
         paths = fs.FileSystem.locate(self.working_dir, "*.setup") +\
             fs.FileSystem.locate(self.working_dir, "*.test") +\
             fs.FileSystem.locate(self.working_dir, "*.teardown")
-        return paths
+        return sorted(paths)
 
     def personalize(self):
         if (not self.global_config is None) or (not self.local_config is None):
@@ -98,9 +98,9 @@ class Bunch(object):
         return self.bunch_dir
 
     def get_stories(self):
-        test_scripts = fs.FileSystem.locate(self.deploy_dir, "*.test")
-        setup_scripts = fs.FileSystem.locate(self.deploy_dir, "*.setup")
-        teardown_scripts = fs.FileSystem.locate(self.deploy_dir, "*.teardown")
+        test_scripts = sorted(fs.FileSystem.locate(self.deploy_dir, "*.test"))
+        setup_scripts = sorted(fs.FileSystem.locate(self.deploy_dir, "*.setup"))
+        teardown_scripts = sorted(fs.FileSystem.locate(self.deploy_dir, "*.teardown"))
         stories = []
         for test in test_scripts:
             test_name, ext = os.path.splitext(os.path.basename(test))

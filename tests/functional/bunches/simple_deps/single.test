@@ -1,0 +1,12 @@
+Feature: Single feature
+    In order to test Bunch
+    As developer
+    I want to execute test without fixtures
+
+
+    Scenario: Single scenario
+        One
+        Two
+        Three
+
+

@@ -1,0 +1,31 @@
+Feature: Create user and project using python-novaclient CLI
+    In order to prepare environment for smoke test
+    As cloud admin
+    I want to create user and project
+
+    Scenario: Create admin user
+        Given every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        When I create nova admin user "admin1"
+        Then nova user "admin1" exists
+
+    Scenario: Create project
+        Given nova user "admin1" exists
+        When I create nova project "project1" for user "admin1"
+        Then nova project "project1" exists
+        And nova user "admin1" is the manager of the nova project "project1"

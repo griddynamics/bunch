@@ -1,0 +1,11 @@
+Feature: Remove pool of external IP's
+    In order to clean after test of floating IP feature
+    As tester
+    I want to remove pool of external IP's using nova-manage
+
+
+    Scenario: Deregister pool of external IPs
+        Given novarc for project "project1", user "admin1" is available
+        And I see pool of external IP addresses "172.30.254.0/28" exist
+        When I remove pool of external IP addresses "172.30.254.0/28"
+        Then I see pool of external IP addresses "172.30.254.0/28" does not exist

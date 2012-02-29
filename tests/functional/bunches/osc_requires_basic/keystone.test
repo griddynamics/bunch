@@ -1,0 +1,221 @@
+Feature: Setup keystone on installed OpenStack
+    In order to prepare environment for smoke test
+    As root
+    I want to setup keystone
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novaclient-keys"
+
+    Scenario: Install keystone
+        Given every RPM package is installed:
+            | PackageName        |
+            
+            | libvirt      |
+            
+            | mysql      |
+            
+            | mysql-server      |
+            
+            | rabbitmq-server      |
+            
+            | openstack-nova-node-full      |
+            
+            | MySQL-python      |
+            
+            | euca2ools      |
+            
+            | python-kombu      |
+            
+        And every RPM package available:
+            | PackageName        |
+            | openstack-keystone |
+        When I install RPM package(s):
+            | PackageName        |
+            | openstack-keystone |
+        Then every RPM package is installed:
+            | PackageName        |
+            | openstack-keystone |
+
+
+    Scenario: Setup nova and glance to use keystone
+        Given every RPM package is installed:
+            | PackageName        |
+            | openstack-keystone |
+
+#        When I change flag file "/etc/glance/glance-api.conf" by setting flag values:
+#            | Name               | Value                                                 |
+#            | pipeline         | versionnegotiation authtoken auth-context apiv1app    |
+
+#        And I change flag file "/etc/glance/glance-registry.conf" by setting flag values:
+#            | Name               | Value                                  |
+#            | pipeline         |  authtoken auth-context registryapp    |
+
+        And I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo sed -i 's/pipeline = versionnegotiation context apiv1app/pipeline = versionnegotiation authtoken auth-context apiv1app/' "/etc/glance/glance-api.conf"  |  noFail  |
+            |  sudo sed -i 's/pipeline = context registryapp/pipeline = authtoken auth-context registryapp/' "/etc/glance/glance-registry.conf"  |  noFail  |
+            |  sudo mv -f /etc/nova/api-paste.ini /etc/nova/api-paste.ini.wokeystone  | noFail    |
+            |  sudo dd if=/etc/keystone/nova-api-paste.ini of=/etc/nova/api-paste.ini  | noFail    |
+            |  sudo sed -i 's/999888777666/"111333555777"/' "/etc/nova/api-paste.ini"  |  noFail  |
+
+        And I init keystone db for IP "172.18.40.10", admin "admin1", password "secrete", project "project1", token "111333555777", region "kRegion"
+
+        And I start services:
+            | ServiceName        |
+            | keystone |
+        And I restart services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        And every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            | keystone |
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+            |  Command                            | Expected |
+            |  sudo killall dnsmasq \|\| echo     |  noFail  |
+            |  sudo service nova-network restart  |  noFail  |
+
+#Feature: Check keystone service
+#    In order to smoke test keystone functionality
+#    As root
+#    I want to create user, tenant, endpoints in keystone
+
+    Scenario: Check user creating using keystone
+        Given every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            | keystone |
+        When I create keystone user "admin1" with password "secrete" in tenant "project1"
+        Then I see keystone user "admin1" exist
+
+    Scenario: Grant permission for keystone user
+        Given I see keystone user "admin1" exist
+        When I grant role "Admin" for keystone user "admin1"
+        Then I see role "Admin" granted for keystone user "admin1"
+
+    Scenario: Create token
+        Given I see keystone user "admin1" exist
+        When I create token "111333555777" for keystone user "admin1" in tenant "project1"
+        Then I see token "111333555777" for keystone user "admin1" in tenant "project1" exist
+
+
+#Feature: Remove keystone
+#    In order to clean environment after smoke test
+#    As root
+#    I want to remove keystone
+
+
+    Scenario: Revert changes made to nova and glance
+        Given every RPM package is installed:
+            | PackageName        |
+            | openstack-keystone |
+        And every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            | keystone |
+
+
+        When I stop services:
+            | ServiceName        |
+            | keystone |
+        And I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo sed -i 's/pipeline = versionnegotiation authtoken auth-context apiv1app/pipeline = versionnegotiation context apiv1app/' "/etc/glance/glance-api.conf"  |  noFail  |
+            |  sudo sed -i 's/pipeline = authtoken auth-context registryapp/pipeline = context registryapp/' "/etc/glance/glance-registry.conf"  |  noFail  |
+            |  sudo mv -f /etc/nova/api-paste.ini /etc/nova/api-paste.ini.wkeystone  | noFail    |
+            |  sudo cp -f /etc/nova/api-paste.ini.wokeystone /etc/nova/api-paste.ini  | noFail    |
+            |  sudo rm -f /var/lib/keystone/keystone.db  | noFail    |
+            |  sudo rm -rf /etc/keystone     | noFail    |
+
+        And I restart services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            

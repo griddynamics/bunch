@@ -1,0 +1,382 @@
+Feature: Stop services, remove packages and clear all openstack stuff
+
+    Scenario: Stop services
+        Given current user can execute sudo without password
+        When I stop services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        Then every service is stopped:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+
+    Scenario: Remove packages
+        Given current user can execute sudo without password
+        When I remove RPM package(s):
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+            
+            | django-file-upload |
+            
+            | django-openstack |
+            
+            | django-openstack-vnc |
+            
+            | openstack-client |
+            
+            | openstack-client-doc |
+            
+            | openstack-compute |
+            
+            | openstack-dashboard |
+            
+            | openstack-glance |
+            
+            | openstack-glance-doc |
+            
+            | openstack-keystone |
+            
+            | openstack-nova |
+            
+            | openstack-nova-api |
+            
+            | openstack-nova-cc-config |
+            
+            | openstack-nova-compute |
+            
+            | openstack-nova-compute-config |
+            
+            | openstack-nova-doc |
+            
+            | openstack-nova-instancemonitor |
+            
+            | openstack-nova-network |
+            
+            | openstack-nova-node-compute |
+            
+            | openstack-nova-node-full |
+            
+            | openstack-nova-noVNC |
+            
+            | openstack-nova-objectstore |
+            
+            | openstack-nova-scheduler |
+            
+            | openstack-nova-volume |
+            
+            | openstackx |
+            
+            | python-glance |
+            
+            | python-nova |
+            
+            | python-novaclient |
+            
+            
+            | *qemu* |
+            
+            | *libvirt* |
+            
+            | *guestfs* |
+            
+            | *openstack* |
+            
+            | *nova* |
+            
+            | *glance* |
+            
+            | *swift* |
+            
+            | *keystone* |
+            
+            | *eventlet* |
+            
+        Then every RPM package is not installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+            
+            | django-file-upload |
+            
+            | django-openstack |
+            
+            | django-openstack-vnc |
+            
+            | openstack-client |
+            
+            | openstack-client-doc |
+            
+            | openstack-compute |
+            
+            | openstack-dashboard |
+            
+            | openstack-glance |
+            
+            | openstack-glance-doc |
+            
+            | openstack-keystone |
+            
+            | openstack-nova |
+            
+            | openstack-nova-api |
+            
+            | openstack-nova-cc-config |
+            
+            | openstack-nova-compute |
+            
+            | openstack-nova-compute-config |
+            
+            | openstack-nova-doc |
+            
+            | openstack-nova-instancemonitor |
+            
+            | openstack-nova-network |
+            
+            | openstack-nova-node-compute |
+            
+            | openstack-nova-node-full |
+            
+            | openstack-nova-noVNC |
+            
+            | openstack-nova-objectstore |
+            
+            | openstack-nova-scheduler |
+            
+            | openstack-nova-volume |
+            
+            | openstackx |
+            
+            | python-glance |
+            
+            | python-nova |
+            
+            | python-novaclient |
+            
+
+    Scenario: Clean state files
+        Given current user can execute sudo without password
+        And every RPM package is not installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+            
+            | django-file-upload |
+            
+            | django-openstack |
+            
+            | django-openstack-vnc |
+            
+            | openstack-client |
+            
+            | openstack-client-doc |
+            
+            | openstack-compute |
+            
+            | openstack-dashboard |
+            
+            | openstack-glance |
+            
+            | openstack-glance-doc |
+            
+            | openstack-keystone |
+            
+            | openstack-nova |
+            
+            | openstack-nova-api |
+            
+            | openstack-nova-cc-config |
+            
+            | openstack-nova-compute |
+            
+            | openstack-nova-compute-config |
+            
+            | openstack-nova-doc |
+            
+            | openstack-nova-instancemonitor |
+            
+            | openstack-nova-network |
+            
+            | openstack-nova-node-compute |
+            
+            | openstack-nova-node-full |
+            
+            | openstack-nova-noVNC |
+            
+            | openstack-nova-objectstore |
+            
+            | openstack-nova-scheduler |
+            
+            | openstack-nova-volume |
+            
+            | openstackx |
+            
+            | python-glance |
+            
+            | python-nova |
+            
+            | python-novaclient |
+            
+        When I kill all processes:
+            | Process |
+            
+            | qemu-kvm |
+            
+            | dnsmasq |
+            
+        And I clean state files:
+            | PathWildCard |
+            
+            | /etc/libvirt |
+            
+            | /var/lib/libvirt |
+            
+            | /var/log/libvirt |
+            
+            | /var/lib/keystone/keystone.{,token.}db |
+            
+            | /var/log/keystone/ |
+            
+            | /var/lib/nova |
+            
+            | /var/log/nova |
+            
+            | /etc/nova |
+            
+            | /var/lib/glance |
+            
+            | /var/log/glance |
+            
+            | /etc/glance |
+            
+            | /var/log/rabbitmq/ |
+            
+            | /var/lib/rabbitmq/ |
+            
+            | /tmp/.guestfs* |
+            
+            | /tmp/tmp* |
+            
+        Then no files exist:
+            | PathWildCard |
+            
+            | /etc/libvirt |
+            
+            | /var/lib/libvirt |
+            
+            | /var/log/libvirt |
+            
+            | /var/lib/keystone/keystone.{,token.}db |
+            
+            | /var/log/keystone/ |
+            
+            | /var/lib/nova |
+            
+            | /var/log/nova |
+            
+            | /etc/nova |
+            
+            | /var/lib/glance |
+            
+            | /var/log/glance |
+            
+            | /etc/glance |
+            
+            | /var/log/rabbitmq/ |
+            
+            | /var/lib/rabbitmq/ |
+            
+            | /tmp/.guestfs* |
+            
+            | /tmp/tmp* |
+            

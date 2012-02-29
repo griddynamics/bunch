@@ -1,5 +1,7 @@
 *.pyc
 *.idea
-docs/_build/
-docs/_build
+./docs/_build/
+./docs/_build
 .coverage
+.result.xml
+./tests/functional/results

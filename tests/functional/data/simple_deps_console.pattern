@@ -1,0 +1,19 @@
+Feature: Setup.*#.*complete.setup:1
+([\s\S])*?
+Feature: Feature with setup and teardown.*#.*complete.test:1
+([\s\S])*?
+Feature: Teardown.*#.*complete.teardown:1
+([\s\S])*?
+Feature: Only Setup.*#.*setup-only.setup:1
+([\s\S])*?
+Feature: Feature with Setup.*#.*setup-only.test:1
+([\s\S])*?
+Feature: Single feature.*#.*single.test:1
+([\s\S])*?
+Feature: Feature with Teardown.*#.*teardown-only.test:1
+([\s\S])*?
+Feature: Only Teardown.*#.*teardown-only.teardown:1
+([\s\S])*?
+1 feature \(1 passed\)
+1 scenario \(1 passed\)
+1 step \(1 passed\)

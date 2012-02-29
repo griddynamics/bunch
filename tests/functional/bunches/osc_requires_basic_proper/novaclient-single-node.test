@@ -1,0 +1,37 @@
+Feature: Start instance(s) in single node deployment using  python-novaclient CLI
+    In order to smoke test OpenStack build
+    As tester
+    I want to register start instance and verify it is up and available via SSH
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novaclient-network ! novaclient-images ! novaclient-keys"
+
+    Scenario: Start single instance and bind with pre-uploaded keypair
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance1" using image "solid_mini_image",  flavor "m1.small" and keypair "test_key"
+        Then VM instance "rhelinstance1" comes up within "180" seconds
+        And VM instance "rhelinstance1" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance1" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated"
+        And I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+    Scenario: Start single instance and login with auto-generated root password
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        When I start VM instance "rhelinstance2" using image "solid_mini_image",  flavor "m1.small" and save auto-generated password
+        Then VM instance "rhelinstance2" comes up within "180" seconds
+        And VM instance "rhelinstance2" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance2" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance2" via SSH as "root" using saved password
+
+
+    Scenario: Stop instances
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+        When I stop VM instance "rhelinstance1"
+        And I stop VM instance "rhelinstance2"
+        Then VM instance "rhelinstance1" is stopped within "180" seconds
+        And VM instance "rhelinstance2" is stopped within "180" seconds

@@ -1,0 +1,299 @@
+Feature: Install, start services and create virtual disk needed to test volume
+    In order to test volume functionality
+    As tester
+    I want to install services
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novaclient-network ! novaclient-images ! novaclient-keys"
+
+
+    Scenario: Install packages
+        Given current user can execute sudo without password
+        And every RPM package available:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        When I install RPM package(s):
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        Then every RPM package is installed:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+
+    Scenario: Start iscsi services
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        When I start services:
+            | ServiceName   |
+            
+            | tgtd |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | tgtd |
+            
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected  |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |
+
+
+
+#    Scenario: Clean after privious run
+#        When I remove lvm group "nova-volumes" on device "/dev/loop4"
+#    Scenario: Clean after privious run
+#        And I remove loop device "/dev/loop4"
+
+
+    Scenario: Create volume
+        Given current user can execute sudo without password
+        And every service is running:
+            | ServiceName   |
+            
+            | tgtd |
+            
+        When I create loop device "/dev/loop4" in file "/tmp/loop4" with size "4" gigabytes
+        And I create lvm group "nova-volumes" on device "/dev/loop4"
+        Then I see loop device "/dev/loop4" available
+        And I see lvm group "nova-volumes" on device "/dev/loop4" available
+
+
+    Scenario: Start nova-volume services
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        And I see lvm group "nova-volumes" on device "/dev/loop4" available
+        When I start services:
+            | ServiceName   |
+            
+            | nova-volume |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-volume |
+            
+
+
+#Feature: Test nova volume
+#    In order to smoke test Volume functionality
+#    As tester
+#    I want to start instance, create volume and test it can be used within instance
+
+    Scenario: Start instance
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance1" using image "solid_mini_image",  flavor "m1.small" and keypair "test_key"
+        Then VM instance "rhelinstance1" comes up within "180" seconds
+        And VM instance "rhelinstance1" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance1" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated"
+        And I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+
+    Scenario: Create volume
+        Given every service is running:
+            | ServiceName   |
+            
+            | nova-volume |
+            
+        When I create volume "vol" with size of "1" in zone "nova"
+        Then volume "vol" comes up within "180" seconds
+
+    Scenario: Attach volume to instance
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+        And I see volume "vol" available
+        When I attach volume "vol" to VM instance "rhelinstance1" as device "/dev/vdc"
+        And I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command                                          |   Expected  |
+            | dmesg \| tail -20                                 |  noFail  |
+            | cat /proc/diskstats                               |  noFail  |
+        Then I see volume "vol" attached to VM instance "rhelinstance1"
+
+    Scenario: Check volume is accessible inside instance
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+        And I see volume "vol" attached to VM instance "rhelinstance1"
+        And keypair with name "test_key" exists
+        When I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            | dmesg \|tail -20                                       |  noFail  |
+            | cat /proc/diskstats                                    |  noFail  |
+            | /sbin/mke2fs /dev/vdc                                  |  noFail  |
+            | mkdir  /tmp/nova-volume-test                                  |  noFail  |
+            | mount -t ext2 /dev/vdc /tmp/nova-volume-test                  |  noFail  |
+            | grep   /tmp/nova-volume-test /proc/mounts \| awk '{print $1}' |  /dev/vdc  |
+            | mkdir  /tmp/nova-volume-test/testDir                          |  noFail  |
+            | touch  /tmp/nova-volume-test/testDir/testFile                 |  noFail  |
+            | umount /tmp/nova-volume-test                                  |  noFail  |
+            | mount -t ext2 /dev/vdc /tmp/nova-volume-test                  |  noFail  |
+            | ls -1  /tmp/nova-volume-test/testDir/                         |  testFile  |
+            | umount /tmp/nova-volume-test                                  |  noFail  |
+        Then commands are executed without errors
+
+    Scenario: Detach volume
+        Given I see volume "vol" attached to VM instance "rhelinstance1"
+        When I detach volume "vol"
+        Then I see volume "vol" available
+
+    Scenario: Start second instance
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance2" using image "solid_mini_image",  flavor "m1.small" and keypair "test_key"
+        Then VM instance "rhelinstance2" comes up within "180" seconds
+        And VM instance "rhelinstance2" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance2" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated"
+
+
+    Scenario: Attach volume to second instance
+        Given VM instance "rhelinstance2" is pingable within "90" seconds
+        And I see volume "vol" available
+        When I attach volume "vol" to VM instance "rhelinstance2" as device "/dev/vdc"
+        Then I see volume "vol" attached to VM instance "rhelinstance2"
+
+    Scenario: Check volume data saved and can be accessible on second instance
+        Given VM instance "rhelinstance2" is pingable within "90" seconds
+        And I see volume "vol" attached to VM instance "rhelinstance2"
+        And keypair with name "test_key" exists
+        When I login to VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            | dmesg \| tail -20                                      |  noFail  |
+            | cat /proc/diskstats                                    |  noFail  |
+            | mkdir  /tmp/nova-volume-test                                  |  noFail  |
+            | mount -t ext2 /dev/vdc /tmp/nova-volume-test                  |  noFail  |
+            | grep   /tmp/nova-volume-test /proc/mounts \| awk '{print $1}' |  /dev/vdc  |
+            | ls -1  /tmp/nova-volume-test/testDir/                         |  testFile  |
+            | umount /tmp/nova-volume-test                                  |  noFail  |
+        Then commands are executed without errors
+
+    Scenario: Create second volume
+        Given every service is running:
+            | ServiceName   |
+            
+            | nova-volume |
+            
+        When I create volume "vol1" with size of "1" in zone "nova"
+        Then volume "vol1" comes up within "60" seconds
+
+    Scenario: Attach second volume to instance
+        Given VM instance "rhelinstance2" is pingable within "90" seconds
+        And I see volume "vol1" available
+        When I attach volume "vol1" to VM instance "rhelinstance2" as device "/dev/vdd"
+
+        When I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            | dmesg \| tail -20                                    |  noFail  |
+            | cat /proc/diskstats                                  |  noFail  |
+
+        Then I see volume "vol1" attached to VM instance "rhelinstance2"
+
+    Scenario: Detach volumes
+        Given I see volume "vol" attached to VM instance "rhelinstance2"
+        And I see volume "vol1" attached to VM instance "rhelinstance2"
+        When I detach volume "vol"
+        And I detach volume "vol1"
+        Then I see volume "vol" available
+        Then I see volume "vol1" available
+
+    Scenario: Delete volume
+        Given I see volume "vol" available
+        And I see volume "vol1" available
+        When I remove volume "vol"
+        And I remove volume "vol1"
+        Then I see volume "vol" removed
+        And I see volume "vol1" removed
+
+    Scenario: Stop instances
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+        And VM instance "rhelinstance2" is pingable within "90" seconds
+        When I stop VM instance "rhelinstance1"
+        And I stop VM instance "rhelinstance2"
+        Then VM instance "rhelinstance1" is stopped within "180" seconds
+        And VM instance "rhelinstance2" is stopped within "180" seconds
+
+#Feature: Remove services installed to test nova volumes
+#    In order to test volume functionality
+#    As tester
+#    I want to remove services
+
+
+    Scenario: Stop iscsi and nova-volume services
+        Given current user can execute sudo without password
+        When I stop services:
+            | ServiceName   |
+            
+            | tgtd |
+            
+            
+            | nova-volume |
+            
+        Then every service is stopped:
+            | ServiceName   |
+            
+            | tgtd |
+            
+            
+            | nova-volume |
+            
+
+    Scenario: Remove created volumes
+        Given every service is stopped:
+            | ServiceName   |
+            
+            | tgtd |
+            
+        When I remove lvm group "nova-volumes" on device "/dev/loop4"
+        And I remove loop device "/dev/loop4"
+        Then I see lvm group "nova-volumes" on device "/dev/loop4" removed
+        And I see loop device "/dev/loop4" removed
+
+
+
+
+# BAD Idea. Removes all openstack
+#    Scenario: Remove packages
+#        Given current user can execute sudo without password
+#        When I remove RPM package(s):
+#            | PackageName   |
+#            
+#            | scsi-target-utils |
+#            
+#            | lvm2 |
+#            
+#        Then every RPM package is not installed:
+#            | PackageName   |
+#            
+#            | scsi-target-utils |
+#            
+#            | lvm2 |
+#            

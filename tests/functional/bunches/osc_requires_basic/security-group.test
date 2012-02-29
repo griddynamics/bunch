@@ -1,0 +1,356 @@
+Feature: Change nova config to enable security groups
+    In order to test security-group functionality
+    As tester
+    I want to change nova config
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-network"
+
+    Scenario: Configure OpenStack compute
+        Given every RPM package is installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+        When I change flag file "/etc/nova/nova.conf" by setting flag values:
+            | Name                      | Value              |
+            | --allow_same_net_traffic  | false              |
+
+         Then the following flags in file "/etc/nova/nova.conf" are set to:
+            | Name                      | Value              |
+            | --allow_same_net_traffic  | false              |
+
+
+    Scenario: Restart OpenStack services
+        Given every service is running:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        When I restart services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |
+
+#Feature: Test security groups
+#    In order to smoke test security group functionality
+#    As tester
+#    I want to start 3 instances in different security groups. Then allow traffic between 2 of them and check that allowed and disallowed traffic works as it should.
+
+
+
+    Scenario: Add 3 security groups, check them added.
+        Given novarc for project "project1", user "admin1" is available
+        And I see security group "smoketest" does not exist
+        And I see security group "smoketest2" does not exist
+        And I see security group "smoketest3" does not exist
+        When I add security group "smoketest"
+        And I add security group "smoketest2"
+        And I add security group "smoketest3"
+        Then I see security group "smoketest" exist
+        And I see security group "smoketest2" exist
+        And I see security group "smoketest3" exist
+
+
+    Scenario: Add rules for me to access instances
+        Given novarc for project "project1", user "admin1" is available
+        And I see security group "smoketest" exist
+        And I see security group "smoketest2" exist
+        And I see security group "smoketest3" exist
+
+        When I add rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group ""
+        And I add rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest"
+        And I add rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest2"
+        And I add rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest3"
+
+        And I add rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group ""
+        And I add rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "smoketest"
+        And I add rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "smoketest2"
+        And I add rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "smoketest3"
+
+        Then I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "" exist
+        And I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest" exist
+        And I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest2" exist
+        And I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest3" exist
+
+        And I see rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "" exist
+        And I see rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "smoketest" exist
+        And I see rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "smoketest2" exist
+        And I see rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "smoketest3" exist
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |
+
+    Scenario: Start instance
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance1" using image "solid_mini_image",  flavor "m1.small", keypair "test_key" in security groups "smoketest"
+        Then VM instance "rhelinstance1" comes up within "180" seconds
+        And VM instance "rhelinstance1" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance1" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated"
+        And I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+
+    Scenario: Start 2nd instance
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance2" using image "solid_mini_image",  flavor "m1.small", keypair "test_key" in security groups "smoketest2"
+        Then VM instance "rhelinstance2" comes up within "180" seconds
+        And VM instance "rhelinstance2" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance2" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated"
+        And I login to VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+
+    Scenario: Start 3rd instance
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance3" using image "solid_mini_image",  flavor "m1.small", keypair "test_key" in security groups "smoketest3"
+        Then VM instance "rhelinstance3" comes up within "180" seconds
+        And VM instance "rhelinstance3" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance3" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance3" via SSH as "root" with key "id_rsa_generated"
+        And I login to VM "rhelinstance3" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+
+# Creating rules and checking traffic  ---------------
+
+
+    Scenario: Add rule to allow all traffic from SG2 pass to SG3
+        Given novarc for project "project1", user "admin1" is available
+        And I see security group "smoketest2" exist
+        And I see security group "smoketest3" exist
+        When I add rule allow from group "smoketest2", protocol "", host "" to access port "" in group "smoketest3"
+        And I add rule allow from group "smoketest3", protocol "", host "" to access port "" in group "smoketest2"
+        Then I see rule allow from group "smoketest2", protocol "", host "" to access port "" in group "smoketest3" exist
+        And I see rule allow from group "smoketest3", protocol "", host "" to access port "" in group "smoketest2" exist
+
+    Scenario: Login to 2nd instance and check traffic can pass to 3rd instance and cannot pass to 1st
+        Given novarc for project "project1", user "admin1" is available
+        And I can log into VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated"
+        When I login to VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command                |   Expected  |
+            |   ping -c3 "rhelinstance3" \| grep received \|awk '{print $4}'   |   3      |
+
+        And I login to VM "rhelinstance2" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command                |   Expected  |
+            |   ping -c3 "rhelinstance1" \| grep received \|awk '{print $4}'   |   0      |
+
+
+
+    Scenario: Login to 3rd instance and check traffic can pass to 2nd instance
+        Given novarc for project "project1", user "admin1" is available
+        And I can log into VM "rhelinstance3" via SSH as "root" with key "id_rsa_generated"
+        When I login to VM "rhelinstance3" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command                |   Expected  |
+            |   ping -c3 "rhelinstance2" \| grep received \|awk '{print $4}'   |   3      |
+
+
+    Scenario: Remove rule to allow all traffic from SG2 pass to SG3
+        Given novarc for project "project1", user "admin1" is available
+        And I see security group "smoketest2" exist
+        And I see security group "smoketest3" exist
+        When I remove rule allow from group "smoketest2", protocol "", host "" to access port "" in group "smoketest3"
+        Then I see rule allow from group "smoketest2", protocol "", host "" to access port "" in group "smoketest3" does not exist
+
+# Clear -------------------------
+
+    Scenario: Stop instances
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+        And VM instance "rhelinstance2" is pingable within "90" seconds
+        And VM instance "rhelinstance3" is pingable within "90" seconds
+        When I stop VM instance "rhelinstance1"
+        And I stop VM instance "rhelinstance2"
+        And I stop VM instance "rhelinstance3"
+        Then VM instance "rhelinstance1" is stopped within "180" seconds
+        And VM instance "rhelinstance2" is stopped within "180" seconds
+        And VM instance "rhelinstance3" is stopped within "180" seconds
+
+
+
+    Scenario: Remove we used to access instances
+        Given novarc for project "project1", user "admin1" is available
+        And I see security group "smoketest" exist
+        And I see security group "smoketest2" exist
+        And I see security group "smoketest3" exist
+        When I remove rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group ""
+        And I remove rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group ""
+        Then I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "" does not exist
+        And I see rule allow from group "", protocol "icmp", host "172.30.252.1" to access port "" in group "" does not exist
+
+
+#    Scenario: Remove general rule
+#        Given I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest" exist
+#        When I remove rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest"
+#        Then I see rule allow from group "", protocol "tcp", host "172.30.252.1" to access port "22" in group "smoketest" does not exist
+
+    Scenario: Remove security groups
+        Given novarc for project "project1", user "admin1" is available
+        And I see security group "smoketest" exist
+        And I see security group "smoketest2" exist
+        And I see security group "smoketest3" exist
+        When I remove security group "smoketest"
+        And I remove security group "smoketest2"
+        And I remove security group "smoketest3"
+        Then I see security group "smoketest" does not exist
+        And I see security group "smoketest2" does not exist
+        And I see security group "smoketest3" does not exist
+
+
+#Feature: Change nova config to disable security groups
+#    In order to clean after test security-group functionality
+#    As tester
+#    I want to change nova config
+
+    Scenario: Configure OpenStack compute
+        Given every RPM package is installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+        When I change flag file "/etc/nova/nova.conf" by removing flag values:
+            | Name                      |
+            | --allow_same_net_traffic  |
+
+        Then the following flags are not in "/etc/nova/nova.conf":
+            | Name                      |
+            | --allow_same_net_traffic  |
+
+
+    Scenario: Restart OpenStack services
+        Given every service is running:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        When I restart services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |

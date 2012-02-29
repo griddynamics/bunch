@@ -1,0 +1,96 @@
+Feature: Check uniq names feature
+    In order to smoke test OpenStack build
+    As tester
+    I want to register start instance and verify it is up and available. Check i can not start instance with same name
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novaclient-network ! novaclient-images ! novaclient-keys"
+
+    Scenario: Start multiple instances with same name when unique instance names enabled
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And the following flags in file "/etc/nova/nova.conf" are set to:
+                                      |     Name             | Value |
+                                      | --project_uniq_names | true  |
+
+        When I start VM instance "rhelinstance1" using image "solid_mini_image", flavor "m1.small"
+        Then VM instance "rhelinstance1" comes up within "180" seconds
+
+
+    Scenario: Check we can not start instancr with same name
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+# TODO
+        Then I can not start VM instance "rhelinstance1" using image "solid_mini_image", flavor "m1.small"
+
+
+    Scenario: Stop instances after test
+        Given novarc for project "project1", user "admin1" is available
+        When I stop VM instance "rhelinstance1"
+        Then VM instance "rhelinstance1" is stopped within "180" seconds
+
+
+
+
+    Scenario: Disable uniq names flag in nova.conf
+        Then every service is running:
+                                      | ServiceName   |
+                                      
+                                      | nova-api |
+                                      
+                                      | nova-direct-api |
+                                      
+                                      | nova-compute |
+                                      
+                                      | nova-network |
+                                      
+                                      | nova-scheduler |
+                                      
+                                      | glance-api |
+                                      
+                                      | glance-registry |
+                                      
+        When I change flag file "/etc/nova/nova.conf" by setting flag values:
+                                      |     Name             | Value |
+                                      | --project_uniq_names | False  |
+        And I restart services:
+                                      |     ServiceName    |
+                                      
+                                      | nova-api        |
+                                      
+                                      | nova-direct-api        |
+                                      
+                                      | nova-compute        |
+                                      
+                                      | nova-network        |
+                                      
+                                      | nova-scheduler        |
+                                      
+                                      | glance-api        |
+                                      
+                                      | glance-registry        |
+                                      
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+            |  Command                            | Expected  |
+            |  sudo killall dnsmasq \|\| echo     |  noFail  |
+            |  sudo service nova-network restart  |  noFail  |
+
+
+    Scenario: Start multiple instances with same name when unique instance names disabled
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And the following flags in file "/etc/nova/nova.conf" are set to:
+                                      |     Name             | Value |
+                                      | --project_uniq_names | False  |
+        When I start VM instance "rhelinstance2" using image "solid_mini_image", flavor "m1.small"
+        And I start VM instance "rhelinstance2" using image "solid_mini_image", flavor "m1.small"
+        Then VM instance "rhelinstance2" comes up within "180" seconds
+
+    Scenario: Stop instances
+        Given novarc for project "project1", user "admin1" is available
+        When I stop VM instance "rhelinstance2"
+        And I stop VM instance "rhelinstance2"
+        Then VM instance "rhelinstance2" is stopped within "180" seconds
+        And VM instance "rhelinstance2" is stopped within "180" seconds
+

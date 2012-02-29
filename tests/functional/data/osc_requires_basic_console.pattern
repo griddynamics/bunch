@@ -1,0 +1,34 @@
+
+Feature: Install OpenStack from scratch on clean environment.*#.*single-node.clean.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-users.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-network.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-images.setup:1
+([\s\S])*?
+Feature: Register SSH keys using  python-novaclient CLI.*#.*novaclient-keys.setup:1
+([\s\S])*?
+Feature: Add pool of external IP's.*#.*floating-ip.test:1
+([\s\S])*?
+Feature: Setup keystone on installed OpenStack.*#.*keystone.test:1
+([\s\S])*?
+Feature: Start instance.*s.* in single node deployment using  python-novaclient CLI.*#.*novaclient-single-node.test:1
+([\s\S])*?
+Feature: Change nova config to enable security groups.*#.*security-group.test:1
+([\s\S])*?
+Feature: Change uniq-names flag and check it works.*#.*uniq-names.test:1
+([\s\S])*?
+Feature: Install, start services and create virtual disk needed to test volume.*#.*volume.test:1
+([\s\S])*?
+Feature: Deregister SSH keys using  python-novaclient CLI.*#.*novaclient-keys.teardown:1
+([\s\S])*?
+Feature: Delete user and project using python-novaclient CLI #.*novaclient-users.teardown:1
+([\s\S])*?
+Feature: Stop services, remove packages and clear all openstack stuff #.*single-node.clean.teardown:1
+([\s\S])*?
+Feature: Stop services, remove packages and clear all openstack stuff #.*single-node.clean.teardown:1
+([\s\S])*?
+1 feature \(1 passed\)
+3 scenarios \(3 passed\)
+11 steps \(11 passed\)

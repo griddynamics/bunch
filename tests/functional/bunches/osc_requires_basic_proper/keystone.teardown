@@ -1,0 +1,76 @@
+Feature: Remove keystone
+    In order to clean environment after smoke test
+    As root
+    I want to remove keystone
+
+
+    Scenario: Revert changes made to nova and glance
+        Given every RPM package is installed:
+            | PackageName        |
+            | openstack-keystone |
+        And every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            | keystone |
+
+
+        When I stop services:
+            | ServiceName        |
+            | keystone |
+        And I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo sed -i 's/pipeline = versionnegotiation authtoken auth-context apiv1app/pipeline = versionnegotiation context apiv1app/' "/etc/glance/glance-api.conf"  |  noFail  |
+            |  sudo sed -i 's/pipeline = authtoken auth-context registryapp/pipeline = context registryapp/' "/etc/glance/glance-registry.conf"  |  noFail  |
+            |  sudo mv -f /etc/nova/api-paste.ini /etc/nova/api-paste.ini.wkeystone  | noFail    |
+            |  sudo cp -f /etc/nova/api-paste.ini.wokeystone /etc/nova/api-paste.ini  | noFail    |
+            |  sudo rm -f /var/lib/keystone/keystone.db  | noFail    |
+            |  sudo rm -rf /etc/keystone     | noFail    |
+
+        And I restart services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            

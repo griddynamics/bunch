@@ -1,0 +1,19 @@
+Feature: Add pool of external IP's
+    In order to have test floating IP feature
+    As tester
+    I want to Add pool of external IP's using nova-manage
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novaclient-images ! novaclient-keys"
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |
+
+
+    Scenario: Register pool of external IPs
+        Given novarc for project "project1", user "admin1" is available
+        When I add pool of external IP addresses "172.30.254.0/28"
+        Then I see pool of external IP addresses "172.30.254.0/28" exist

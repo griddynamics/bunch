@@ -1,0 +1,70 @@
+Feature: Allocate external IP and associate with instance,
+    In order to test floating IP feature
+    As tester
+    I want to associate external IP with instance
+
+
+    Scenario: Allocate external IP
+        Given novarc for project "project1", user "admin1" is available
+        And I see pool of external IP addresses "172.30.254.0/28" exist
+        When I allocate address "floatip"
+        Then I see address "floatip" allocated
+
+
+    Scenario: Start instance
+        Given novarc for project "project1", user "admin1" is available
+        And VM image "solid_mini_image" is registered
+        And keypair with name "test_key" exists
+        When I start VM instance "rhelinstance1" using image "solid_mini_image",  flavor "m1.small" and keypair "test_key"
+        Then VM instance "rhelinstance1" comes up within "180" seconds
+        And VM instance "rhelinstance1" is pingable within "90" seconds
+        And I see that "ssh" port of VM instance "rhelinstance1" is open and serves "ssh" protocol within "90" seconds
+        And I can log into VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated"
+        And I login to VM "rhelinstance1" via SSH as "root" with key "id_rsa_generated" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+    Scenario: Associate allocated IP with started instance
+        Given novarc for project "project1", user "admin1" is available
+        When I associate address "floatip" with instance "rhelinstance1"
+        Then I see address "floatip" associated with instance "rhelinstance1"
+
+    Scenario: Check floating IP
+        Given novarc for project "project1", user "admin1" is available
+        And VM instance "rhelinstance1" is pingable within "90" seconds
+        When I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo iptables -I OUTPUT -p icmp -j ACCEPT                       | noFail    |
+        Then address "floatip" is pingable within "90" seconds
+
+
+
+
+## CLEAN AFTER TEST ----------------------
+
+    Scenario: De-associate IP from instance
+        Given novarc for project "project1", user "admin1" is available
+        And I see address "floatip" associated with instance "rhelinstance1"
+        When I de-associate address "floatip" from instance "rhelinstance1"
+        Then I see address "floatip" not associated with instance "rhelinstance1"
+        And I see address "floatip" allocated
+
+
+    Scenario: De-Allocate external IP
+        Given novarc for project "project1", user "admin1" is available
+        And I see address "floatip" allocated
+        When I de-allocate address "floatip"
+        Then I see address "floatip" not allocated
+
+
+    Scenario: Stop instance
+        Given VM instance "rhelinstance1" is pingable within "90" seconds
+        When I stop VM instance "rhelinstance1"
+        Then VM instance "rhelinstance1" is stopped within "180" seconds
+
+    Scenario: Undo system changes
+        Given novarc for project "project1", user "admin1" is available
+        When I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo iptables -D OUTPUT -p icmp -j ACCEPT                       | noFail    |
+        Then commands are executed without errors

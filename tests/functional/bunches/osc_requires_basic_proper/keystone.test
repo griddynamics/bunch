@@ -1,0 +1,36 @@
+Feature: Check keystone service
+    In order to smoke test keystone functionality
+    As root
+    I want to create user, tenant, endpoints in keystone
+
+    Scenario: Check user creating using keystone
+        Given every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+            | keystone |
+        When I create keystone user "admin1" with password "secrete" in tenant "project1"
+        Then I see keystone user "admin1" exist
+
+    Scenario: Grant permission for keystone user
+        Given I see keystone user "admin1" exist
+        When I grant role "Admin" for keystone user "admin1"
+        Then I see role "Admin" granted for keystone user "admin1"
+
+    Scenario: Create token
+        Given I see keystone user "admin1" exist
+        When I create token "111333555777" for keystone user "admin1" in tenant "project1"
+        Then I see token "111333555777" for keystone user "admin1" in tenant "project1" exist

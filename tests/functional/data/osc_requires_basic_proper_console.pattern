@@ -1,0 +1,50 @@
+
+Feature: Install OpenStack from scratch on clean environment.*#.*single-node.clean.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-users.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-network.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-images.setup:1
+([\s\S])*?
+Feature: Register SSH keys using  python-novaclient CLI.*#.*novaclient-keys.setup:1
+([\s\S])*?
+Feature: Add pool of external IP's.*#.*floating-ip.setup:1
+([\s\S])*?
+Feature: Allocate external IP and associate with instance,.*#.*floating-ip.test:1
+([\s\S])*?
+Feature: Remove pool of external IP's.*#.*floating-ip.teardown:1
+([\s\S])*?
+Feature: Setup keystone on installed OpenStack.*#.*keystone.setup:1
+([\s\S])*?
+Feature: Check keystone service.*#.*keystone.test:1
+([\s\S])*?
+Feature: Remove keystone.*#.*keystone.teardown:1
+([\s\S])*?
+Feature: Start instance\(s\) in single node deployment using  python-novaclient CLI.*#.*novaclient-single-node.test:1
+([\s\S])*?
+Feature: Change nova config to enable security groups.*#.*security-group.setup:1
+([\s\S])*?
+Feature: Test security groups.*#.*security-group.test:1
+([\s\S])*?
+Feature: Change nova config to disable security groups.*#.*security-group.teardown:1
+([\s\S])*?
+Feature: Change uniq-names flag and check it works.*#.*uniq-names.setup:1
+([\s\S])*?
+Feature: Check uniq names feature.*#.*uniq-names.test:1
+([\s\S])*?
+Feature: Install, start services and create virtual disk needed to test volume.*#.*volume.setup:1
+([\s\S])*?
+Feature: Test nova volume.*#.*volume.test:1
+([\s\S])*?
+Feature: Remove services installed to test nova volumes.*#.*volume.teardown:1
+([\s\S])*?
+Feature: Deregister SSH keys using  python-novaclient CLI.*#.*novaclient-keys.teardown:1
+([\s\S])*?
+Feature: Delete user and project using python-novaclient CLI #.*novaclient-users.teardown:1
+([\s\S])*?
+Feature: Stop services, remove packages and clear all openstack stuff #.*single-node.clean.teardown:1
+([\s\S])*?
+1 feature \(1 passed\)
+3 scenarios \(3 passed\)
+11 steps \(11 passed\)

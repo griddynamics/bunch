@@ -1,0 +1,11 @@
+Feature: Feature with Setup
+    In order to test Bunch
+    As developer
+    I want to execute test with setup fixture
+
+
+    Scenario: Feature with Setup
+        Test step
+
+
+

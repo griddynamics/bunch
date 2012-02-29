@@ -9,7 +9,7 @@ help:
 	@echo "make check_dependencies"
 	@echo "make clean"
 
-check:	clean check_dependencies unit
+check:	clean check_dependencies unit functional
 
 check_dependencies:
 	@echo "Checking for dependencies to run tests ..."
@@ -20,6 +20,10 @@ check_dependencies:
 unit: clean
 	@echo "Running unit tests ..."
 	@nosetests -s --verbosity=2 --with-coverage --cover-erase --cover-inclusive tests/unit --cover-package=bunch
+
+functional: clean
+	@echo "Running functional tests ..."
+	@nosetests -s --verbosity=2 --with-coverage --cover-erase --cover-inclusive tests/functional --cover-package=bunch
 
 clean:
 	@printf "Cleaning up files that are already in .gitignore... "

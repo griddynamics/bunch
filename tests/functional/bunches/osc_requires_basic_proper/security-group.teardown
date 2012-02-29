@@ -1,0 +1,87 @@
+Feature: Change nova config to disable security groups
+    In order to clean after test security-group functionality
+    As tester
+    I want to change nova config
+
+    Scenario: Configure OpenStack compute
+        Given every RPM package is installed:
+            | PackageName   |
+            
+            | libvirt |
+            
+            | mysql |
+            
+            | mysql-server |
+            
+            | rabbitmq-server |
+            
+            | openstack-nova-node-full |
+            
+            | MySQL-python |
+            
+            | euca2ools |
+            
+            | python-kombu |
+            
+        When I change flag file "/etc/nova/nova.conf" by removing flag values:
+            | Name                      |
+            | --allow_same_net_traffic  |
+
+        Then the following flags are not in "/etc/nova/nova.conf":
+            | Name                      |
+            | --allow_same_net_traffic  |
+
+
+    Scenario: Restart OpenStack services
+        Given every service is running:
+            | ServiceName   |
+            
+            | messagebus |
+            
+            | rabbitmq-server |
+            
+            | mysqld |
+            
+            | libvirtd |
+            
+        When I restart services:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-api |
+            
+            | nova-direct-api |
+            
+            | nova-compute |
+            
+            | nova-network |
+            
+            | nova-scheduler |
+            
+            | glance-api |
+            
+            | glance-registry |
+            
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |

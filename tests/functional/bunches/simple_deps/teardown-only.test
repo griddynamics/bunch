@@ -1,0 +1,11 @@
+Feature: Feature with Teardown
+    In order to test Bunch
+    As developer
+    I want to execute test with teardown fixture
+
+
+    Scenario: Feature with teardown
+        Test step
+
+
+

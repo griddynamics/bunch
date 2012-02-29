@@ -1,0 +1,100 @@
+Feature: Install, start services and create virtual disk needed to test volume
+    In order to test volume functionality
+    As tester
+    I want to install services
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novaclient-network ! novaclient-images ! novaclient-keys"
+
+
+    Scenario: Install packages
+        Given current user can execute sudo without password
+        And every RPM package available:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        When I install RPM package(s):
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        Then every RPM package is installed:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+
+    Scenario: Start iscsi services
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        When I start services:
+            | ServiceName   |
+            
+            | tgtd |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | tgtd |
+            
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected  |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |
+
+
+
+#    Scenario: Clean after privious run
+#        When I remove lvm group "nova-volumes" on device "/dev/loop4"
+#    Scenario: Clean after privious run
+#        And I remove loop device "/dev/loop4"
+
+
+    Scenario: Create volume
+        Given current user can execute sudo without password
+        And every service is running:
+            | ServiceName   |
+            
+            | tgtd |
+            
+        When I create loop device "/dev/loop4" in file "/tmp/loop4" with size "4" gigabytes
+        And I create lvm group "nova-volumes" on device "/dev/loop4"
+        Then I see loop device "/dev/loop4" available
+        And I see lvm group "nova-volumes" on device "/dev/loop4" available
+
+
+    Scenario: Start nova-volume services
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            
+            | scsi-target-utils |
+            
+            | lvm2 |
+            
+        And I see lvm group "nova-volumes" on device "/dev/loop4" available
+        When I start services:
+            | ServiceName   |
+            
+            | nova-volume |
+            
+        Then every service is running:
+            | ServiceName   |
+            
+            | nova-volume |
