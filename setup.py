@@ -2,7 +2,7 @@
 
 import os
 import sys
-from bunch import version
+from lettuce_bunch import version
 from setuptools import setup
 from string import strip
 
@@ -12,7 +12,7 @@ def get_dependencies():
 
 def get_packages():
     packages = []
-    for root, dirnames, filenames in os.walk('bunch'):
+    for root, dirnames, filenames in os.walk('lettuce_bunch'):
         if '__init__.py' in filenames:
             packages.append(".".join(os.path.split(root)).strip("."))
 
@@ -21,7 +21,7 @@ def get_packages():
 #required_modules = get_dependencies()
 required_modules = []
 
-setup(name='bunch',
+setup(name='lettuce-bunch',
     version=version,
     description='Bunch test organizer for Lettuce',
     author=u'GD',
@@ -30,7 +30,7 @@ setup(name='bunch',
     packages=get_packages(),
     install_requires=required_modules,
     entry_points={
-        'console_scripts': ['bunch = bunch.cli:main'],
+        'console_scripts': ['bunch = lettuce_bunch.cli:main'],
     },
 )
   

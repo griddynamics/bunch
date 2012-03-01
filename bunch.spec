@@ -3,8 +3,8 @@
 
 
 Summary: 	Bunch test organizer for Lettuce
-Name:	 	python-bunch
-Version: 	0.0.2
+Name:	 	python-lettuce-bunch
+Version: 	0.1.0
 Release: 	1
 Source0: 	%{name}-%{version}.tar.gz
 License: 	GNU GPL v3+
@@ -15,6 +15,7 @@ BuildArch: 	noarch
 Url: 		http://github.com/TODO
 BuildRequires:  python-setuptools, python-sphinx, python-lettuce, python-jinja2, PyYAML, python-nose
 Requires: 	python-lettuce, python-jinja2, PyYAML, python-nose
+Obsoletes:  python-bunch < 0.0.1-1
 
 %description
 Bunch is tool for grouping, managing and running Lettuce scenarios. It offers explicit separation of test fixtures from test scenarios by dividing it into setup, teardown and test scripts. Bunch encourages writing clean, self-sufficient and multi-environment tests, which can be executed in parallel. It also provides more flexibility for test parameterization - test scenarios are treated as templates, which get parameterized upon execution.
@@ -43,6 +44,7 @@ make check
 %install
 mkdir -p %{buildroot}/%{_mandir}/man1
 cp -p docs/_build/man/* %{buildroot}/%{_mandir}/man1
+ln -sf %{_mandir}/man1/lettuce_bunch.1.gz %{buildroot}/%{_mandir}/man1/bunch.1.gz
 
 %{__python} setup.py install --prefix=%{_prefix} --root=%{buildroot} --single-version-externally-managed -O1  --record=INSTALLED_FILES
 
@@ -52,6 +54,7 @@ rm -rf %{buildroot}
 %files -f INSTALLED_FILES
 %defattr(-,root,root)
 %doc %{_mandir}/man1/bunch.1.gz
+%doc %{_mandir}/man1/lettuce_bunch.1.gz
 
 %changelog
 * Thu Feb 16 2012 skosyrev@griddynamics.com

@@ -9,8 +9,8 @@ from lettuce import Feature
 from xml.dom import minidom
 import subprocess
 import pprint
-from bunch import dependencies
-from bunch.exceptions import CyclicDependencySpecification
+from lettuce_bunch import dependencies
+from lettuce_bunch.exceptions import CyclicDependencySpecification
 
 
 class FeaturePersonalizer(object):
@@ -253,7 +253,7 @@ class SerialBunchRunner(object):
 
     def __print_cyclic_dependencies_error(self, cycle_details, name):
         pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint("bunch {name} execution skipped due to cyclic dependencies found:".format(name=name))
+        pp.pprint("lettuce_bunch {name} execution skipped due to cyclic dependencies found:".format(name=name))
         pp.pprint(cycle_details)
 
     def __get_fixture_deps(self, stories):

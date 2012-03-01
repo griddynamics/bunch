@@ -3,8 +3,8 @@
 import sys
 import os
 from optparse import OptionParser
-from bunch.core import SerialBunchRunner, Bunch
-from bunch import version
+from lettuce_bunch.core import SerialBunchRunner, Bunch
+from lettuce_bunch import version
 
 def main():
 
@@ -13,12 +13,12 @@ def main():
             return path
         return os.path.abspath(path)
 
-    parser = OptionParser(usage="bunch [OPTION]... BUNCH_DIR... RESULT_DIR",
+    parser = OptionParser(usage="lettuce_bunch [OPTION]... BUNCH_DIR... RESULT_DIR",
                           version=version)
     parser.add_option("-c", "--config", action="store", type="string",
                       dest="config", default='config.yaml', metavar="FILE",
                       help="YAML config file")
-    parser.add_option("-b", "--bunch-concurency",  action="store", type="string",
+    parser.add_option("-b", "--lettuce_bunch-concurency",  action="store", type="string",
                       dest="concurrency", default='serial',
                       help="This option indicates test execution parallelism", metavar="CONCURRENCY_TYPE")
     parser.add_option("-e", "--environment",  action="store", type="string",

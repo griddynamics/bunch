@@ -172,7 +172,7 @@ def topsort_levels(pairlist):
     return topsort_levels_core(num_parents, children)
 
 def topsort_levels_core(num_parents, children):
-    """Topologically sort a bunch of interdependent items based on dependency.
+    """Topologically sort a lettuce_bunch of interdependent items based on dependency.
 
     This returns a generator.
     Turn this into a an iterator using the iter built-in function.

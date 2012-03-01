@@ -1,7 +1,7 @@
 import sys
 import os
 import shlex
-from bunch.cli import main
+from lettuce_bunch.cli import main
 import tempfile
 import re
 
