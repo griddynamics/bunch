@@ -11,6 +11,7 @@ import subprocess
 import pprint
 from lettuce_bunch import dependencies
 from lettuce_bunch.exceptions import CyclicDependencySpecification
+from lettuce_bunch.special import set_current_bunch_dir
 
 
 class FeaturePersonalizer(object):
@@ -95,7 +96,7 @@ class Bunch(object):
         FeaturePersonalizer(self.deploy_dir, self.global_config).personalize()
 
     def deployed_at(self):
-        return self.bunch_dir
+        return self.deploy_dir
 
     def get_stories(self):
         test_scripts = sorted(fs.FileSystem.locate(self.deploy_dir, "*.test"))
@@ -306,6 +307,7 @@ class SerialBunchRunner(object):
         """
         none_failed = True
         for bunch in self.bunch_list:
+            set_current_bunch_dir(bunch.deployed_at())
             stories = bunch.get_stories()
             setup_deps, teardown_deps = self.__get_fixture_deps(stories)
             try:
