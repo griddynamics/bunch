@@ -305,8 +305,9 @@ class SerialBunchRunner(object):
         """
         Execute set of test bunches sequentially
         """
-        none_failed = True
+        no_bunch_failed = True
         for bunch in self.bunch_list:
+            none_failed = True
             set_current_bunch_dir(bunch.deployed_at())
             stories = bunch.get_stories()
             setup_deps, teardown_deps = self.__get_fixture_deps(stories)
@@ -327,7 +328,8 @@ class SerialBunchRunner(object):
             #Now execute teardown disregarding setup results and ignoring script failures
             self.__run_fixtures(teardown_seq,
                 self.__save_path_for_test(os.path.join(bunch.deploy_dir,"teardown")), False)
-        return none_failed
+            no_bunch_failed = no_bunch_failed and none_failed
+        return no_bunch_failed
 
 
 
