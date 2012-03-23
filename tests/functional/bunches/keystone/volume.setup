@@ -1,0 +1,23 @@
+Feature: Install, start services and create virtual disk needed to test volume
+    In order to test volume functionality
+    As tester
+    I want to install services
+
+
+    Scenario: Start iscsi and nova-volumes services
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+        When I start services:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is running:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}

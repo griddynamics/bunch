@@ -130,3 +130,21 @@ def test_empties_solitaries_indepent_and_usual_deps():
     assert_equals(
         list(flatten(combine_fixture_deps(grouplist))),
         ['four', 'five', 'six', 'one', 'two', 'three', 'seven', 'eight', 'nine'])
+
+def test_no_solitary_duplication():
+    grouplist =[[],
+        [[u'single-node.clean.setup'], [u'keystone-init.setup'], [u'keystone-user.setup'], [u'novaclient-network.setup'], [u'novarc-keystone.setup'], [u'novaclient-images.setup'], [u'novaclient-keys.setup']],
+        [[u'novaclient-keys.setup']],
+        [],
+        [[u'single-node.clean.setup'], [u'novaclient-users.setup'], [u'novaclient-network.setup'], [u'novaclient-images.setup'], [u'novaclient-keys.setup']],
+        [[u'lvm.setup']]]
+    assert_equals(
+        list(flatten(combine_fixture_deps(grouplist))),
+        list(flatten([[u'single-node.clean.setup'],
+            [u'keystone-init.setup', u'novaclient-users.setup'],
+            [u'keystone-user.setup'],
+            [u'novaclient-network.setup'],
+            [u'novarc-keystone.setup'],
+            [u'novaclient-images.setup'],
+            [u'novaclient-keys.setup'],
+            [u'lvm.setup']])))

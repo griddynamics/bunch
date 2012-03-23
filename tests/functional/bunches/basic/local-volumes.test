@@ -1,0 +1,207 @@
+Feature: Local volumes
+    In order to smoke test OpenStack build
+    As tester
+    I want to create and check local volumes
+
+    Scenario: Setup prerequisites
+#        Require setup "single-node ! novaclient-users ! novarc ! novaclient-network ! novaclient-images ! novaclient-keys"
+        Require setup "novarc ! novaclient-keys"
+
+{% if disk_type == 'lvm' %}
+        Require setup "lvm"
+{% endif %}
+
+
+{% for disk_type in disk_types %}
+
+    Scenario: {{disk_type}} Configure OpenStack
+        When I change flag file "{{nova.conf_file}}" by setting flag values:
+            | Name                      | Value                                         |
+            | --local_images_type       | {{disk_type}}                                 |
+        Then the following flags in file "{{nova.conf_file}}" are set to:
+            | Name                      | Value                                         |
+            | --local_images_type       | {{disk_type}}                                 |
+
+{% if disk_type == 'lvm' %}
+    Scenario: Configure LVM
+        Given the following flags in file "{{nova.conf_file}}" are set to:
+            | Name                      | Value                                         |
+            | --local_images_type       | {{disk_type}}                                 |
+        When I change flag file "{{nova.conf_file}}" by setting flag values:
+            | Name                      | Value                                         |
+            | --lvm_volume_group        | {{local_volume.group}}                                   |
+        Then the following flags in file "{{nova.conf_file}}" are set to:
+            | Name                      | Value                                         |
+            | --lvm_volume_group        | {{local_volume.group}}                                   |
+{% endif %}
+
+    Scenario: Restart OpenStack
+        When I restart services:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is running:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+            |  Command                            | Expected |
+            |  sudo killall dnsmasq \|\| echo     |  noFail  |
+            |  sudo service nova-network restart  |  noFail  |
+
+
+    Scenario: [{{disk_type}}] Start single instance and bind with pre-uploaded keypair
+        Given novarc is available
+        And VM image "{{image.name}}" is registered
+        And keypair with name "{{vm.keypair.name}}" exists
+        When I start VM instance "{{disk_type}}-{{vm.name}}" using image "{{image.name}}",  flavor "{{vm.flavor}}" and keypair "{{vm.keypair.name}}"
+        Then VM instance "{{disk_type}}-{{vm.name}}" comes up within "{{vm.boot_timeout}}" seconds
+        And VM instance "{{disk_type}}-{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        And I see that "ssh" port of VM instance "{{disk_type}}-{{vm.name}}" is open and serves "ssh" protocol within "{{vm.ssh_deadline}}" seconds
+        And I can log into VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}"
+        And I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+
+    Scenario: [{{disk_type}}] Create volume
+        Given I can log into VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}"
+        When I create volume for VM instance "{{disk_type}}-{{vm.name}}" with size "{{local_volume.size}}" as device "{{local_volume.device}}"
+        Then device "{{local_volume.device}}" is attached to VM instance "{{disk_type}}-{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        And I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                  |   Expected |
+            |  cat /proc/diskstats                      |   noFail   |
+            |  test -b {{local_volume.device}}                |   noFail   |
+
+
+    Scenario: [{{disk_type}}] Create too big volume
+        I can't create volume for VM instance "{{disk_type}}-{{vm.name}}" with size "{{local_volume.big_size}}" as device "{{local_volume.device}}"
+
+{% if disk_type != 'raw' %}
+{% if disk_type == 'lvm' %}
+
+    Scenario: [{{disk_type}}] Create snapshot
+        When I suspend VM instance "{{disk_type}}-{{vm.name}}"
+        And VM instance "{{disk_type}}-{{vm.name}}" is suspended within "{{vm.suspend_deadline}}" seconds
+        And I create snapshot from device "{{local_volume.device}}" of VM instance "{{disk_type}}-{{vm.name}}" and name it "{{disk_type}}-{{local_volume.snapshot.name}}"
+        And I resume VM instance "{{disk_type}}-{{vm.name}}"
+        And VM instance "{{disk_type}}-{{vm.name}}" comes up within "{{vm.suspend_deadline}}" seconds
+        Then snapshot "{{disk_type}}-{{local_volume.snapshot.name}}" is active within "{{local_volume.snapshot.timeout}}" seconds
+{% else %}
+
+        Given device "{{local_volume.device}}" is attached to VM instance "{{disk_type}}-{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        When I create snapshot from device "{{local_volume.device}}" of VM instance "{{disk_type}}-{{vm.name}}" and name it "{{disk_type}}-{{local_volume.snapshot.name}}"
+        Then snapshot "{{disk_type}}-{{local_volume.snapshot.name}}" is active within "{{local_volume.snapshot.timeout}}" seconds
+{% endif %}
+
+
+# We cannot create snapshot of rootfs using nova2ools yet..
+#    Scenario: Start instance using created snapshot and check it works
+#        Given novarc is available
+#        And VM image "{{disk_type}}-{{local_volume.snapshot.name}}" is registered
+#        And keypair with name "{{vm.keypair.name}}" exists
+#        When I start VM instance "{{disk_type}}-{{vm2.name}}" using image "{{disk_type}}-{{local_volume.snapshot.name}}",  flavor "{{vm.flavor}}" and keypair "{{vm.keypair.name}}"
+#        Then VM instance "{{disk_type}}-{{vm2.name}}" comes up within "{{vm.boot_timeout}}" seconds
+#        And VM instance "{{disk_type}}-{{vm2.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+#        And I see that "ssh" port of VM instance "{{disk_type}}-{{vm2.name}}" is open and serves "ssh" protocol within "{{vm.ssh_deadline}}" seconds
+#        And I can log into VM "{{disk_type}}-{{vm2.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}"
+#        And I login to VM "{{disk_type}}-{{vm2.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+#            |  Command  |   Expected  |
+#            |   whoami  |   root      |
+
+#    Scenario: Stop instance started using snapshot
+#        Given VM instance "{{disk_type}}-{{vm2.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+#        When I stop VM instance "{{disk_type}}-{{vm2.name}}"
+#        Then VM instance "{{disk_type}}-{{vm2.name}}" is stopped within "{{vm.boot_timeout}}" seconds
+
+
+    Scenario: [{{disk_type}}] Create volume from snapshot
+        Given snapshot "{{disk_type}}-{{local_volume.snapshot.name}}" is active within "{{local_volume.timeout}}" seconds
+        When I create volume for VM instance "{{disk_type}}-{{vm.name}}" from snapshot "{{disk_type}}-{{local_volume.snapshot.name}}" as device "{{local_volume.snapshot.device}}"
+        Then device "{{local_volume.snapshot.device}}" is attached to VM instance "{{disk_type}}-{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        And I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                 |   Expected |
+            |  cat /proc/diskstats                     |   noFail   |
+            |  test -b {{local_volume.snapshot.device}} |   noFail   |
+
+
+    Scenario: [{{disk_type}}] Create volume from snapshot with specified size
+        Given snapshot "{{disk_type}}-{{local_volume.snapshot.name}}" is active within "{{local_volume.timeout}}" seconds
+        When I create volume with resizing for VM instance "{{disk_type}}-{{vm.name}}" from snapshot "{{disk_type}}-{{local_volume.snapshot.name}}" with size "{{local_volume.snapshot.resize}}" as device "{{local_volume.snapshot.resize_device}}"
+        And device "{{local_volume.snapshot.resize_device}}" is attached to VM instance "{{disk_type}}-{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        Then I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                  |   Expected |
+            |  cat /proc/diskstats                      |   noFail   |
+            |  test -b {{local_volume.snapshot.resize_device}} |   noFail   |
+        And I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                                                  |   Expected  |
+            |  /sbin/blockdev --getsize64 {{local_volume.snapshot.resize_device}}              |   {{local_volume.snapshot.resize}}   |
+
+    Scenario: Delete snapshot
+        I deregister VM image "{{disk_type}}-{{local_volume.snapshot.name}}"
+
+
+{% endif %}
+
+    Scenario: [{{disk_type}}] Resize volume
+        Given device "{{local_volume.device}}" is attached to VM instance "{{disk_type}}-{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        When I resize device "{{local_volume.device}}" on VM instance "{{disk_type}}-{{vm.name}}" to new size of "{{local_volume.new_size}}"
+        Then device "{{local_volume.device}}" on VM instance "{{disk_type}}-{{vm.name}}" is resized within "{{local_volume.timeout}}" seconds
+        And size of device "{{local_volume.device}}" on VM instance "{{disk_type}}-{{vm.name}}" is equal to "{{local_volume.new_size}}" within "{{local_volume.resize_timeout}}" seconds
+
+    Scenario: [{{disk_type}}]Check device size in guest OS
+        Given device "{{local_volume.device}}" on VM instance "{{disk_type}}-{{vm.name}}" is resized within "{{local_volume.timeout}}" seconds
+        When I reboot VM instance "{{disk_type}}-{{vm.name}}"
+        And VM instance "{{disk_type}}-{{vm.name}}" comes up within "{{vm.boot_timeout}}" seconds
+        And VM instance "{{disk_type}}-{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        Then I see that "ssh" port of VM instance "{{disk_type}}-{{vm.name}}" is open and serves "ssh" protocol within "{{vm2.ssh_deadline}}" seconds
+        Then I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                       |   Expected |
+            |  /sbin/blockdev --getsize64 {{local_volume.device}}  |   {{local_volume.new_size}}   |
+
+
+    Scenario: [{{disk_type}}]Delete volume
+        Given device "{{local_volume.device}}" is attached to VM instance "{{disk_type}}-{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        When I delete device "{{local_volume.device}}" on VM instance "{{disk_type}}-{{vm.name}}"
+        Then device "{{local_volume.device}}" on VM instance "{{disk_type}}-{{vm.name}}" is deleted within "{{local_volume.delete_timeout}}" seconds
+        Then I login to VM "{{disk_type}}-{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                 |   Expected |
+            |  cat /proc/diskstats                     |   noFail   |
+            |  test ! -e {{local_volume.device}}             |   noFail   |
+
+
+    Scenario: Stop instance
+        Given VM instance "{{disk_type}}-{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        When I stop VM instance "{{disk_type}}-{{vm.name}}"
+        Then VM instance "{{disk_type}}-{{vm.name}}" is stopped within "{{vm.boot_timeout}}" seconds
+
+
+{% endfor %}
+
+    Scenario: Undo changes to nova.conf
+        I change flag file "{{nova.conf_file}}" by removing flag values:
+            | Name                      |
+            | --local_images_type       |
+            | --lvm_volume_group        |
+
+
+        And I restart services:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is running:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+
+        Scenario: Workaround for dnsmasq hang up
+            I run commands:
+            |  Command                            | Expected |
+            |  sudo killall dnsmasq \|\| echo     |  noFail  |
+            |  sudo service nova-network restart  |  noFail  |

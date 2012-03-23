@@ -1,0 +1,63 @@
+Feature: Allocate external IP and associate with instance,
+    In order to test floating IP feature
+    As tester
+    I want to associate external IP with instance
+
+
+    Scenario: Allocate external IP
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        And I see pool of external IP addresses "{{cc_external_network}}" exist
+        When I allocate address "{{floating.name}}"
+        Then I see address "{{floating.name}}" allocated
+
+    Scenario: Allocate single flIPs
+            Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+            And  I see pool of external IP addresses "{{single_floating.cidr}}" exist
+            And I see pool of external IP addresses "{{single_floating.ip}}" exist
+            When I allocate address "{{single_floating.name_network}}"
+            And I allocate address "{{single_floating.name_ip}}"
+            Then I see address "{{single_floating.name_network}}" allocated
+            And I see address "{{single_floating.name_ip}}" allocated
+
+
+    Scenario: Start instance
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        And VM image "{{image.name}}" is registered
+        And keypair with name "{{vm.keypair.name}}" exists
+        When I start VM instance "{{vm.name}}" using image "{{image.name}}",  flavor "{{vm.flavor}}" and keypair "{{vm.keypair.name}}"
+        Then VM instance "{{vm.name}}" comes up within "{{vm.boot_timeout}}" seconds
+        And VM instance "{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        And I see that "ssh" port of VM instance "{{vm.name}}" is open and serves "ssh" protocol within "{{vm.ping_deadline}}" seconds
+        And I can log into VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}"
+        And I login to VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command  |   Expected  |
+            |   whoami  |   root      |
+
+    Scenario: Associate allocated IP with started instance
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        When I associate address "{{floating.name}}" with instance "{{vm.name}}"
+        Then I see address "{{floating.name}}" associated with instance "{{vm.name}}"
+
+    Scenario: Check floating IP
+        Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+        And VM instance "{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        When I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo iptables -I OUTPUT -p icmp -j ACCEPT                       | noFail    |
+        Then address "{{floating.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+
+    Scenario: Associate allocated single flIPs with started instance
+            Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+            When I associate address "{{single_floating.name_network}}" with instance "{{vm.name}}"
+            And I associate address "{{single_floating.name_ip}}" with instance "{{vm.name}}"
+            Then I see address "{{single_floating.name_network}}" associated with instance "{{vm.name}}"
+            And I see address "{{single_floating.name_ip}}" associated with instance "{{vm.name}}"
+
+    Scenario: Check single floating IPs
+            Given novarc for project "{{project.name}}", user "{{user.name}}" is available
+            And VM instance "{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+            When I run commands:
+                |  Command                                                         | Expected  |
+                |  sudo iptables -I OUTPUT -p icmp -j ACCEPT                       | noFail    |
+            Then address "{{single_floating.name_network}}" is pingable within "{{vm.ping_deadline}}" seconds
+            And address "{{single_floating.name_ip}}" is pingable within "{{vm.ping_deadline}}" seconds

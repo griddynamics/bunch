@@ -1,0 +1,35 @@
+Feature: Remove services installed to test nova volumes
+    In order to test volume functionality
+    As tester
+    I want to remove services
+
+
+    Scenario: Stop iscsi and nova-volume services
+        Given current user can execute sudo without password
+        When I stop services:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is stopped:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+
+
+
+# BAD Idea. Removes all openstack
+#    Scenario: Remove packages
+#        Given current user can execute sudo without password
+#        When I remove RPM package(s):
+#            | PackageName   |
+#            {% for package in volume_packages %}
+#            | {{ package }} |
+#            {% endfor %}
+#        Then every RPM package is not installed:
+#            | PackageName   |
+#            {% for package in volume_packages %}
+#            | {{ package }} |
+#            {% endfor %}
+

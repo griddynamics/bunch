@@ -1,0 +1,95 @@
+Feature: Configure openstack for light test
+    Scenario: Check that we have all default packages installed, all services running. Install packages needed for tests
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            {% for package in test_prepequisites %}
+            | {{ package }} |
+            {% endfor %}
+            {% for package in packages_to_install %}
+            | {{ package }} |
+            {% endfor %}
+
+        And every service is running:
+            | ServiceName   |
+            {% for service in supplementary_services %}
+            | {{ service }} |
+            {% endfor %}
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+
+        When I install RPM package(s):
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+        Then every RPM package is installed:
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+
+
+    Scenario: Start iscsi and nova-volumes services
+        Given current user can execute sudo without password
+        And every RPM package is installed:
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+        When I start services:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is running:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+
+
+
+    Scenario: Register pool of external IPs for FLIP test
+        Given novarc is available
+        When I add pool of external IP addresses "{{cc_external_network}}"
+        Then I see pool of external IP addresses "{{cc_external_network}}" exist
+
+    Scenario: Configure OpenStack for light test
+        When I change flag file "{{nova.conf_file}}" by setting flag values:
+            | Name                      | Value     |
+            | --allow_same_net_traffic  | false     |
+            | --project_uniq_names      | true      |
+            | --local_images_type       | qcow      |
+
+         Then the following flags in file "{{nova.conf_file}}" are set to:
+            | Name                      | Value     |
+            | --allow_same_net_traffic  | false     |
+            | --project_uniq_names      | true      |
+            | --local_images_type       | qcow      |
+
+
+    Scenario: Restart OpenStack services
+        Given every service is running:
+            | ServiceName   |
+            {% for service in supplementary_services %}
+            | {{ service }} |
+            {% endfor %}
+        When I restart services:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is running:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |

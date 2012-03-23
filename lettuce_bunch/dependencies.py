@@ -29,10 +29,12 @@ def filter_empties(deps):
     return filter(None, deps)
 
 def combine_fixture_deps(deps):
-    solitary, linked = split_solitaries(filter_empties(deps))
+    solitaries, linked = split_solitaries(filter_empties(deps))
     try:
         result = [group for group in topsort_levels(chain(*map(dependency_groups_to_pairs, linked)))]
-        result.extend(solitary)
+        for solitary in solitaries:
+            if solitary not in result:
+                result.append(solitary)
     except CycleError as cycle_details:
         raise CyclicDependencySpecification(cycle_details)
 

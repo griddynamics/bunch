@@ -27,8 +27,6 @@ Feature: Delete user and project using python-novaclient CLI #.*novaclient-users
 ([\s\S])*?
 Feature: Stop services, remove packages and clear all openstack stuff #.*single-node.clean.teardown:1
 ([\s\S])*?
-Feature: Stop services, remove packages and clear all openstack stuff #.*single-node.clean.teardown:1
-([\s\S])*?
 1 feature \(1 passed\)
 3 scenarios \(3 passed\)
 11 steps \(11 passed\)

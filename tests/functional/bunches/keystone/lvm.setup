@@ -1,0 +1,30 @@
+Feature: Install, start services and create virtual disk needed to test volume
+    In order to test volume functionality
+    As tester
+    I want to install services
+
+    Scenario: Install packages
+        Given current user can execute sudo without password
+        And every RPM package available:
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+        When I install RPM package(s):
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+        Then every RPM package is installed:
+            | PackageName   |
+            {% for package in volume_packages %}
+            | {{ package }} |
+            {% endfor %}
+
+    Scenario: Create loop device and lvm group
+        Given current user can execute sudo without password
+        When I create loop device "{{volume.source_dev}}" in file "{{volume.source_dev_file}}" with size "{{volume.source_dev_size}}" gigabytes
+        And I create lvm group "{{volume.group}}" on device "{{volume.source_dev}}"
+        Then I see loop device "{{volume.source_dev}}" available
+        And I see lvm group "{{volume.group}}" on device "{{volume.source_dev}}" available
+
