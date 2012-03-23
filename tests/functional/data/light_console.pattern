@@ -53,9 +53,9 @@ Feature: Delete LVM group and loop device used for tests.*#.*lvm.teardown:1
 ([\s\S])*?
 Feature: Install OpenStack from scratch on clean environment.*#.*single-node.clean.setup:1
 ([\s\S])*?
-Feature: Create user and project using python-novaclient CLI.*#.*novaclient-users.setup:1
-([\s\S])*?
 Feature: Setup keystone on installed OpenStack.*#.*keystone-init.setup:1
+([\s\S])*?
+Feature: Create user and project using python-novaclient CLI.*#.*novaclient-users.setup:1
 ([\s\S])*?
 Feature: Check keystone service.*#.*keystone-user.setup:1
 ([\s\S])*?

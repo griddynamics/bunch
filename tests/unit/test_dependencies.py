@@ -52,8 +52,8 @@ def test_combine_fixtures_basic():
                 'novaclient-users',
                 'novaclient-images',
                 'novaclient-keys',
-                'volume-services',
                 'novaclient-flatnetwork',
+                'volume-services',
                 'volume']
     assert_equals(list(flatten(result)), expected)
 
@@ -105,7 +105,7 @@ def test_independent_deps():
         [ ['1','2','3'], ['4'], ['5'] ]   ]
     assert_equals(
         list(flatten(combine_fixture_deps(grouplist))),
-        ['1', '3', '2', '4', '5'])
+        ['1', '2', '3', '4', '5'])
 
 def test_independent_single_deps():
     grouplist = [
