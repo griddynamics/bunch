@@ -1,0 +1,34 @@
+{% extends "bootstrap/layouts/base_navbar_responsive.html" %}
+{% from "bootstrap/macros.html" import result_icon %}
+
+{% block title %}Test bunch: {{ name }}{% endblock %}
+
+{% block navbar_links %}
+    <a class="brand" href="#">Test bunch: {{ name }} </a>
+    <div class="nav-collapse">
+        <ul class="nav">
+{#            <li class="active"><a href="#">Examples</a></li> #}
+{#            <li class="active"><a href="http://github.com/auzigog/jinja-bootstrap/">GitHub</a></li> #}
+{#            <li><a href="#">About</a></li>#}                                                          
+{#            <li><a href="#">Contact</a></li>#}
+        </ul>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+        <h2>{{name}} results</h2>
+        <br>
+        <p>{{description}}</p>
+</div>
+
+{% for feature in features %}
+<div class="highlight"><pre><span class="k">Feature:</span><span class="nf"> {{feature.name}}</span>
+{% for scenario in feature.scenarios %}<span class="nf">        </span><span class="k">Scenario:</span><span class="nf"> {{scenario.name}}</span>
+{% for step in scenario.steps %}<span class="nf">{{result_icon(step.result)}}            </span><span class="nf"> {{step.name}}</span>
+{% endfor %} 
+{% endfor %} 
+</pre></div>
+{% endfor %}  
+
+{% endblock %}

@@ -5,6 +5,9 @@ import os
 from optparse import OptionParser
 from lettuce_bunch.core import SerialBunchRunner, Bunch
 from lettuce_bunch import version
+from lettuce_bunch.plugins import plugins_list
+from lettuce_bunch.plugins.base import parse_plugin_params
+
 
 def main():
 
@@ -18,12 +21,23 @@ def main():
     parser.add_option("-c", "--config", action="store", type="string",
                       dest="config", default='config.yaml', metavar="FILE",
                       help="YAML config file")
-    parser.add_option("-b", "--lettuce_bunch-concurency",  action="store", type="string",
+    parser.add_option("-b", "--bunch-concurency",  action="store", type="string",
                       dest="concurrency", default='serial',
                       help="This option indicates test execution parallelism", metavar="CONCURRENCY_TYPE")
     parser.add_option("-e", "--environment",  action="store", type="string",
                       dest="environment",
                       help="This option indicates type of test fixtures intended for environment NAME", metavar="NAME")
+    parser.add_option("-o", "--output-plugin",  action="store", type="choice",
+        default=None,
+        choices=plugins_list(),
+        help="Output plugin for test results", metavar="PLUGIN")
+    parser.add_option("-p", "--plugin-params",
+        action="callback",
+        callback=parse_plugin_params,
+        type="string",
+        default=None,
+        help='Semicolon separated list of parameters to output plugin: "param1=val1;param2=val2;..."', metavar="PARAMS")
+
     (options, args) = parser.parse_args()
 
     if len(args) <= 1:  parser.print_help(); sys.exit(2)
@@ -43,8 +57,6 @@ def main():
         bunch.deploy()
         bunch.personalize()
         bunch_list.append(bunch)
-
-
 
     def filter_args_for_lettuce(arg):
         if arg in parser._long_opt  or arg in parser._short_opt:
@@ -72,9 +84,13 @@ def main():
 
         return True
 
-
     args = filter(filter_args_for_lettuce, sys.argv)
-    none_failed = SerialBunchRunner(bunch_list, args, options.environment).run()
+    none_failed = SerialBunchRunner(bunch_list, args,
+        env_name=options.environment,
+        plugin=options.output_plugin,
+        plugin_params=options.plugin_params
+    ).run()
+
     if not none_failed:
         sys.exit(2)
 

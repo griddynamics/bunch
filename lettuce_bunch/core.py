@@ -12,7 +12,16 @@ import pprint
 from lettuce_bunch import dependencies
 from lettuce_bunch.exceptions import CyclicDependencySpecification
 from lettuce_bunch.special import set_current_bunch_dir
+from lettuce_bunch.utils import every
+from lettuce_bunch.plugins import load_plugin, BunchDetails
 
+try:
+    import lxml.etree as ET
+except ImportError:
+    try:
+        import cElementTree as ET
+    except ImportError:
+        import xml.etree.ElementTree as ET
 
 class FeaturePersonalizer(object):
     """Class responsible for creating personalized tests
@@ -233,17 +242,23 @@ class BunchTestStory(object):
         return pairs
 
 class SerialBunchRunner(object):
-    def __init__(self, bunch_list, args, env_name=None):
+    def __init__(self, bunch_list, args, env_name=None, plugin=None, plugin_params=None):
         self.args = args
         self.bunch_list = bunch_list
         self.env_name=env_name
+        self.plugin=self.__create_plugin(plugin, plugin_params)
+
+    def __create_plugin(self, name, params):
+        return load_plugin(name, params)
+
 
     def __save_path_for_test(self, test):
-        return os.path.splitext(test)[0] + ".result.xml"
+        return os.path.splitext(test)[0]
 
-    def __run_lettuce(self, runner, collector):
+    def __run_lettuce(self, runner, xunit_collector, bunch_collector):
         success = runner.run()
-        collector.pickup(runner.xml_result())
+        xunit_collector.pickup(runner.xml_result())
+        bunch_collector.pickup(runner.bunch_xml_output())
         runner.clean()
         return success
 
@@ -261,13 +276,13 @@ class SerialBunchRunner(object):
         return [story.get_setup_dependency_groups(self.env_name) for story in stories], \
                [ story.get_teardown_dependency_groups(self.env_name) for story in stories]
 
-    def __run_fixtures(self, groups, results_name, stop_on_failure=True):
+    def __run_fixtures(self, groups, results_name, bunch_collector, stop_on_failure=True):
         results = XmlResultCollector()
         for group in groups:
             for script in group:
                 if not results.all_successful() and stop_on_failure:
                     break
-                self.__run_lettuce(LettuceRunner(script, self.args), results)
+                self.__run_lettuce(LettuceRunner(script, self.args), results, bunch_collector)
         results.dump(results_name)
         return results.all_successful()
 
@@ -277,29 +292,29 @@ class SerialBunchRunner(object):
                 return True
         return False
 
-    def __exec_default_fixture(self, fixture, result, deps):
+    def __exec_default_fixture(self, fixture, xunit_result, bunch_result, deps):
         if not self.__deps_contain(deps, fixture):
-            return self.__run_lettuce(LettuceRunner(fixture, self.args), result) and result.all_successful()
+            return self.__run_lettuce(LettuceRunner(fixture, self.args), xunit_result, bunch_result) and\
+                   xunit_result.all_successful()
         return True
 
-    def __run_story(self, story, setup_seq, teardown_seq):
+    def __run_story(self, story, setup_seq, teardown_seq, bunch_collector):
         result = XmlResultCollector()
         test, setup, teardown = story.get_test_triplet(self.env_name)
         if setup:
-            self.__exec_default_fixture(setup, result, setup_seq)
+            self.__exec_default_fixture(setup, result, bunch_collector, setup_seq)
         if result.all_successful():
-            self.__run_lettuce(LettuceRunner(test, self.args), result)
+            self.__run_lettuce(LettuceRunner(test, self.args), result, bunch_collector)
         if teardown:
-            self.__exec_default_fixture(teardown, result, teardown_seq)
+            self.__exec_default_fixture(teardown, result, bunch_collector, teardown_seq)
         result.dump(self.__save_path_for_test(story.test))
         return result.all_successful()
 
-    def __run_stories(self, stories, setup_seq, teardown_seq):
+    def __run_stories(self, stories, setup_seq, teardown_seq, collector):
         none_failed = True
         for story in stories:
-            none_failed = none_failed and self.__run_story(story, setup_seq, teardown_seq)
+            none_failed = none_failed and self.__run_story(story, setup_seq, teardown_seq, collector)
         return none_failed
-
 
     def run(self):
         """
@@ -307,30 +322,71 @@ class SerialBunchRunner(object):
         """
         no_bunch_failed = True
         for bunch in self.bunch_list:
+            collector = BunchXmlCollector()
             none_failed = True
             set_current_bunch_dir(bunch.deployed_at())
             stories = bunch.get_stories()
             setup_deps, teardown_deps = self.__get_fixture_deps(stories)
+
             try:
                 setup_seq = dependencies.combine_fixture_deps(setup_deps)
                 teardown_seq = dependencies.combine_fixture_deps(teardown_deps)
             except CyclicDependencySpecification as cycle_error:
                 self.__print_cyclic_dependencies_error(cycle_error, bunch.name())
                 continue
-            #Now perform all setup
 
-            if self.__run_fixtures(setup_seq, self.__save_path_for_test(os.path.join(bunch.deploy_dir,"setup"))):
+            #Now perform all setup
+            if self.__run_fixtures(setup_seq,
+                self.__save_path_for_test(os.path.join(bunch.deploy_dir,"setup")),
+                collector):
                 #setup passed, execute tests
-                none_failed = none_failed and self.__run_stories(stories, setup_seq, teardown_seq)
+                none_failed = none_failed and self.__run_stories(stories, setup_seq, teardown_seq, collector)
             else:
                 none_failed = False
 
             #Now execute teardown disregarding setup results and ignoring script failures
             self.__run_fixtures(teardown_seq,
-                self.__save_path_for_test(os.path.join(bunch.deploy_dir,"teardown")), False)
+                self.__save_path_for_test(os.path.join(bunch.deploy_dir,"teardown")),
+                collector,
+                False)
             no_bunch_failed = no_bunch_failed and none_failed
+            collector.dump(self.__save_path_for_test(os.path.join(bunch.deploy_dir, bunch.name())))
+            self.plugin.transform(collector.get_element_tree(), BunchDetails(name=bunch.name()))
         return no_bunch_failed
 
+class BunchXmlCollector(object):
+    def __init__(self):
+        self.results = None
+
+    def pickup(self, filename):
+        if not os.path.exists(filename):
+            return
+
+        xml_result = ET.ElementTree(file=filename)
+        if self.results is None:
+            self.results = xml_result
+        else:
+            new_elements = xml_result.getroot().getchildren()
+            self.results.getroot().extend(new_elements)
+
+
+    def all_successful(self):
+        def skipped(x):
+            return x.text.lower() != "skipped"
+
+        results = filter(skipped, self.results.findall('feature/result'))
+        return every(lambda x: x.text.lower() == "passed", results)
+
+    @classmethod
+    def filename(cls, name):
+        return name + '.bunch.xml'
+
+    def dump(self, filename):
+        filename = BunchXmlCollector.filename(filename)
+        self.results.write(filename, encoding='utf-8',xml_declaration=True)
+
+    def get_element_tree(self):
+        return self.results
 
 
 class XmlResultCollector(object):
@@ -339,11 +395,9 @@ class XmlResultCollector(object):
     def __init__(self):
         self.results = []
 
-
     def pickup(self, filename):
         with open(filename, 'r') as result_file:
                 self.results.append(result_file.read())
-
 
     def __junit_test_passed(self, result):
         search_result = XmlResultCollector.re_success.search(result)
@@ -360,6 +414,7 @@ class XmlResultCollector(object):
         return True
 
     def dump(self, filename):
+        filename += '.xunit.xml'
         with open(filename, 'w') as result_file:
             result_file.write(self.__merge_results().encode('utf-8'))
 
@@ -396,7 +451,10 @@ class LettuceRunner(object):
         self.script = script
 
     def __xml_report_file(self):
-        return os.path.join(os.path.dirname(self.script), "result.xml")
+        return os.path.join(os.path.dirname(self.script), "result.xunit")
+
+    def __bunch_xml_output(self):
+        return os.path.join(os.path.dirname(self.script), "result.bunch")
 
     def __exec_cmd(self, args):
         #return subprocess.call(args)
@@ -412,6 +470,7 @@ class LettuceRunner(object):
         new_args.append("--verbosity=3")
         new_args.append("--with-xunit")
         new_args.append("--xunit-file=" + self.__xml_report_file())
+        new_args.append("--bunch-output=" + self.__bunch_xml_output())
         new_args.append(self.script)
         sys.argv = new_args
         #lettuce_cli.main()
@@ -423,13 +482,12 @@ class LettuceRunner(object):
         return retcode == 0
         
 
-
-
-
-
+    def bunch_xml_output(self):
+        return self.__bunch_xml_output()
 
     def xml_result(self):
         return self.__xml_report_file()
 
     def clean(self):
         os.remove(self.xml_result())
+        os.remove(self.bunch_xml_output())

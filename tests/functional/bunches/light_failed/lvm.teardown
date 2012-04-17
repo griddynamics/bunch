@@ -1,0 +1,11 @@
+Feature: Delete LVM group and loop device used for tests
+    Scenario: Remove created volumes
+        Given every service is stopped:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+        When I remove lvm group "{{volume.group}}" on device "{{volume.source_dev}}"
+        And I remove loop device "{{volume.source_dev}}"
+        Then I see lvm group "{{volume.group}}" on device "{{volume.source_dev}}" removed
+        And I see loop device "{{volume.source_dev}}" removed
