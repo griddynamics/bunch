@@ -13,9 +13,19 @@ BuildRoot: 	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 Prefix: 	%{_prefix}
 BuildArch: 	noarch
 Url: 		http://github.com/TODO
-BuildRequires:  python-setuptools, python-sphinx, python-lettuce, python-jinja2, PyYAML, python-nose
-Requires: 	python-lettuce, python-jinja2, PyYAML, python-nose
-Obsoletes:  python-bunch < 0.0.1-1
+BuildRequires:  python-setuptools
+BuildRequires:  python-sphinx
+BuildRequires:  python-lettuce > 0.1.34-b2167
+BuildRequires:  python-jinja2
+BuildRequires:  PyYAML
+BuildRequires:  python-nose
+Requires: 	python-lettuce > 0.1.34-b2167
+Requires:       python-jinja2
+Requires:       PyYAML
+Requires:       python-nose
+Requires:       python-anyjson
+Requires:       python-lxml
+Obsoletes:      python-bunch < 0.0.1-1
 
 %description
 Bunch is tool for grouping, managing and running Lettuce scenarios. It offers explicit separation of test fixtures from test scenarios by dividing it into setup, teardown and test scripts. Bunch encourages writing clean, self-sufficient and multi-environment tests, which can be executed in parallel. It also provides more flexibility for test parameterization - test scenarios are treated as templates, which get parameterized upon execution.
