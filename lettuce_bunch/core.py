@@ -374,6 +374,9 @@ class BunchXmlCollector(object):
         def skipped(x):
             return x.text.lower() != "skipped"
 
+        if self.results is None:
+            return True
+
         results = filter(skipped, self.results.findall('feature/result'))
         return every(lambda x: x.text.lower() == "passed", results)
 
@@ -382,6 +385,9 @@ class BunchXmlCollector(object):
         return name + '.bunch.xml'
 
     def dump(self, filename):
+        if self.results is None:
+            return
+
         filename = BunchXmlCollector.filename(filename)
         self.results.write(filename, encoding='utf-8',xml_declaration=True)
 
