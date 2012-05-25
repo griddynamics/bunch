@@ -1,5 +1,5 @@
 {% extends "bootstrap/layouts/base_navbar_responsive.html" %}
-{% from "bootstrap/macros.html" import result_icon %}
+{% from "bootstrap/macros.html" import result_icon, print_hashlines %}
 
 {% block title %}Test bunch: {{ name }}{% endblock %}
 
@@ -26,7 +26,8 @@
 <div class="highlight"><pre><span class="k">Feature:</span><span class="nf"> {{feature.name}}</span>
 {% for scenario in feature.scenarios %}<span class="nf">        </span><span class="k">Scenario:</span><span class="nf"> {{scenario.name}}</span>
 {% for step in scenario.steps %}<span class="nf">{{result_icon(step.result)}}            </span><span class="nf"> {{step.name}}</span>
-{% endfor %} 
+{{print_hashlines(step.hashlines)}}
+{%- endfor %}
 {% endfor %} 
 </pre></div>
 {% endfor %}  

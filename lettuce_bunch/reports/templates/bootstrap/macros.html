@@ -29,3 +29,15 @@
 {% macro result_icon(value) -%}
 {% if value == "passed" %}<i class="icon-ok"></i>{% elif value == "failed" %}<i class="icon-remove"></i>{% else %}<i class="icon-minus"></i>{% endif %}
 {%- endmacro %}
+
+{% macro print_hashes(hashkeys, hashes) -%}
+{% for key in hashkeys -%}<span class="k">                |</span><span class="s"> {{key}}</span><span class="k">   |</span>
+{% endfor -%}
+{% for hash in hashes  -%}<span class="k">                |</span><span class="s"> {{hash}}</span><span class="k">   |</span>
+{% endfor %}
+{%- endmacro %}
+
+{% macro print_hashlines(lines) -%}
+{% for line in lines -%}<span class="k">                  </span><span class="s">{{line}}</span>
+{% endfor -%}
+{%- endmacro %}

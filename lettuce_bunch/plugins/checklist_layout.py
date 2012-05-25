@@ -1,3 +1,4 @@
+import unicodedata
 import lettuce_bunch.plugins.base
 import lettuce_bunch.reports as reports
 import os
@@ -77,7 +78,8 @@ class HtmlSite(object):
         report_filename = self.__report_filename(dt)
         dst_file = join(self.dst, report_filename)
         self.write_html_result(html, dst_file)
-        self.__update_json(report_filename, vars['name'], dt, vars['description'])
+        summary = vars['summary']
+        self.__update_json(report_filename, vars['name'], dt, vars['description'], summary)
         self.__check_index(index_template, vars)
 
     def __index_filename(self):
@@ -101,13 +103,24 @@ class HtmlSite(object):
         with open(self.__json_data_file(), 'w') as f:
             f.write(anyjson.serialize(data))
 
-    def __update_json(self, report_filename, name, date, description):
+    def __update_json(self, report_filename, name, date, description, summary):
+        def cut_milliseconds(s):
+            return s[:s.rfind('.')]
+
+        def add_tz_spec(s):
+            date, time = s.split('T')
+            if 'z' in time or '-' in time or '+' in time:
+                return s
+
+            return s+'+00:00'
+
         data = self.__read_json()
         bunches = data['bunches']
         bunches.append({   'page'  : './' + report_filename,
                         'name'  : name,
-                        'date'  : date.isoformat(),
-                        'description' : description})
+                        'date'  : add_tz_spec(cut_milliseconds(date.isoformat())),
+                        'description' : description,
+                        'summary' : summary})
         self.__write_json(data)
 
     def render(self, template_location, vars, static_url):
@@ -145,7 +158,7 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
     def __get_prop_text(self, item, prop_name):
         return self.__get_item_text(item, 'properties/' + prop_name)
 
-    def __parse_xml_list(self, xml_list):
+    def __parse_hashlist(self, xml_list):
         items = []
         rez = xml_list.findall('item/itemvalue')
         if rez:
@@ -156,18 +169,95 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
         rez_dict = dict()
         items = xml_dict.findall('item')
         for item in items:
-            rez_dict[item.find('key')] = item.find('value')
+            key = item.find('key').text
+            value = item.find('value').text
+            if len(key) and len(value):
+                rez_dict[key] = value
 
         return rez_dict
+
+    def __parse_xml_flatlist(self, xml_list):
+        rez_list = []
+        items = xml_list.findall('item')
+        for item in items:
+            rez_list.append(item.text)
+        return rez_list
 
 
     def __parse_hashes(self, step_xml):
         rez = step_xml.findall('properties/hashes')
         hashes = []
         for item in rez:
-            hashes.extend(map(self.__parse_xml_dict, self.__parse_xml_list(item)))
+            hashes.extend(map(self.__parse_xml_dict, self.__parse_hashlist(item)))
 
         return hashes
+
+    def __parse_keys(self, step_xml):
+        rez = step_xml.findall('properties/keys')
+        keys = []
+        for item in rez:
+            some_keys = self.__parse_xml_flatlist(item)
+            if len(some_keys):
+                keys.extend(some_keys)
+        return keys
+
+    def d2s(self, dicts, order):
+
+        def column_width(string):
+            l = 0
+            for c in string:
+                if unicodedata.east_asian_width(c) in "WF":
+                    l += 2
+                else:
+                    l += 1
+            return l
+
+        def getlen(string):
+            return column_width(unicode(string)) + 1
+
+        def rfill(string, times, char=u" ", append=u""):
+            string = unicode(string)
+            missing = times - column_width(string)
+            for x in range(missing):
+                string += char
+
+            return unicode(string) + unicode(append)
+
+
+        keys_and_sizes = dict([(k, getlen(k)) for k in dicts[0].keys()])
+        for key in keys_and_sizes:
+            for data in dicts:
+                current_size = keys_and_sizes[key]
+                value = unicode(data.get(key, ''))
+                size = getlen(value)
+                if size > current_size:
+                    keys_and_sizes[key] = size
+
+        names = []
+        for key in order:
+            size = keys_and_sizes[key]
+            name = u" %s" % rfill(key, size)
+            names.append(name)
+
+        table = [u"|%s|" % "|".join(names)]
+        for data in dicts:
+            names = []
+            for key in order:
+                value = data.get(key, '')
+                size = keys_and_sizes[key]
+                names.append(u" %s" % rfill(value, size))
+
+            table.append(u"|%s|" % "|".join(names))
+
+        return u"\n".join(table) + u"\n"
+
+
+    def format_hashes(self, hashes, keys):
+        if len(hashes)*len(keys) > 0:
+            return self.d2s(hashes, keys).splitlines()
+        return ""
+
+
 
     def __parse_steps(self, steps_xml):
         steps_list = []
@@ -176,6 +266,8 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
             self.__get_common_props(step_props, step)
             step_props['name'] = self.__get_prop_text(step, 'original_sentence')
             step_props['hashes'] = self.__parse_hashes(step)
+            step_props['hashkeys'] = self.__parse_keys(step)
+            step_props['hashlines'] = self.format_hashes(step_props['hashes'], step_props['hashkeys'])
             steps_list.append(step_props)
 
         return steps_list
@@ -213,13 +305,39 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
 
         return featured_list
 
+    def __get_summary(self, et):
+
+        def get_item_count(et, path, value):
+            return len(filter(lambda x: x.text == value, et.findall(path)))
+
+        def get_result_stats(et, path):
+            states = ['passed', 'failed', 'skipped']
+            stats = {}
+            for state in states:
+                stats[state] = get_item_count(et, path, state)
+            return stats
+
+        #'features/feature/scenarios/scenario/steps/step/result'
+        total = {'features': get_result_stats(et, 'feature/result'),
+                 'scenarios' : get_result_stats(et, 'feature/scenarios/scenario/result'),
+                 'steps' : get_result_stats(et, 'feature/scenarios/scenario/steps/step/result')}
+
+        def get_detailed_stats(et):
+            return {}
+        detailed = get_detailed_stats(et)
+
+        return {'total': total, 'detailed' : detailed}
+
     def __ensure_dst_exists(self):
         if not exists(self.dst_dir):
             os.mkdir(self.dst_dir)
 
     def transform(self, et, details):
-        features_list = self.__parse_features(et.iterfind("feature"))
-        data = {'name' : details.name, 'description' : details.description, 'features' : features_list}
+        data = {'name' : details.name,
+                'description' : details.description,
+                'features' : self.__parse_features(et.iterfind("feature")),
+                'summary' :  self.__get_summary(et)}
+
         self.__ensure_dst_exists()
         site = HtmlSite(self.bootstrap, dst=self.dst_dir)
         #debug
