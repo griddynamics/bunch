@@ -1,0 +1,12 @@
+MustFail:
+  features:
+    - pattern: &pattern '.*?Must Fail.*?'
+      comment: 'This feature must Fail'
+
+  scenarios:
+    - pattern: *pattern
+      comment: 'This step must Fail'
+
+  steps:
+    - pattern: *pattern
+      comment: 'This step must Fail'

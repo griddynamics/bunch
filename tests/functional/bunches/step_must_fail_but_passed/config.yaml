@@ -1,0 +1,4 @@
+MustFail:
+  steps:
+    - pattern: &pattern '.*?Must Fail.*?'
+      comment: 'This feature must Fail'

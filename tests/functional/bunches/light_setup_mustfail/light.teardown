@@ -1,0 +1,73 @@
+Feature: Deconfigure openstack after light test 
+
+    Scenario: Deregister pool of external IPs after FLIP test
+        Given novarc is available
+        And I see pool of external IP addresses "{{cc_external_network}}" exist
+        When I remove pool of external IP addresses "{{cc_external_network}}"
+        Then I see pool of external IP addresses "{{cc_external_network}}" does not exist
+
+    Scenario: DeConfigure OpenStack compute
+        When I change flag file "{{nova.conf_file}}" by removing flag values:
+            | Name                      |
+            | --allow_same_net_traffic  |
+            | --project_uniq_names      |
+            | --local_images_type       |
+
+        Then the following flags are not in "{{nova.conf_file}}":
+            | Name                      |
+            | --allow_same_net_traffic  |
+            | --project_uniq_names      |
+            | --local_images_type       |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    Scenario: Restart OpenStack services
+        Given every service is running:
+            | ServiceName   |
+            {% for service in supplementary_services %}
+            | {{ service }} |
+            {% endfor %}
+        When I restart services:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is running:
+            | ServiceName   |
+            {% for service in openstack_services %}
+            | {{ service }} |
+            {% endfor %}
+
+
+    Scenario: Stop iscsi and nova-volume services
+        Given current user can execute sudo without password
+        When I stop services:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+        Then every service is stopped:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+
+    Scenario: Workaround for dnsmasq hang up
+        I run commands:
+        |  Command                            | Expected |
+        |  sudo killall dnsmasq \|\| echo     |  noFail  |
+        |  sudo service nova-network restart  |  noFail  |

@@ -1,3 +1,4 @@
+import collections
 import os
 import sys
 import re
@@ -13,7 +14,7 @@ from lettuce_bunch import dependencies
 from lettuce_bunch.exceptions import CyclicDependencySpecification
 from lettuce_bunch.special import set_current_bunch_dir
 from lettuce_bunch.utils import every
-from lettuce_bunch.plugins import load_plugin, BunchDetails
+from lettuce_bunch.plugins import load_plugin, BunchDetails, BunchResults
 
 try:
     import lxml.etree as ET
@@ -30,16 +31,16 @@ class FeaturePersonalizer(object):
         self.working_dir = working_dir
         self.local_config = None
         self.global_config = None
-        self.local_config = None
 
-        if os.path.exists(global_config):
-            with open(global_config) as global_config_file:
-                self.global_config = yaml.load(global_config_file)
-
+        self.__global_config_src = global_config
         expected_local_config_file = os.path.join(self.working_dir, 'config.yaml')
-        if os.path.exists(expected_local_config_file):
-            with open(expected_local_config_file) as local_config_file:
-                self.local_config = yaml.load(local_config_file)
+        self.__local_config_src = expected_local_config_file
+
+    def __load_config(self, config_file):
+        if os.path.exists(config_file):
+            with open(config_file) as file:
+                return yaml.load(file)
+        return None
 
     def __find_feature_files(self):
         paths = fs.FileSystem.locate(self.working_dir, "*.setup") +\
@@ -48,11 +49,8 @@ class FeaturePersonalizer(object):
         return sorted(paths)
 
     def personalize(self):
-        if (not self.global_config is None) or (not self.local_config is None):
-            environment = dict()
-            if not self.global_config is None: environment.update(self.global_config)
-            if not self.local_config is None: environment.update(self.local_config)
-
+        environment = self.environment_vars()
+        if len(environment) > 0:
 
             for filename in self.__find_feature_files():
                 with open(filename, "r") as f:
@@ -61,6 +59,18 @@ class FeaturePersonalizer(object):
                 with open(filename, "w") as f:
                     f.write(template.render(**environment))
 
+    def __lazy_config_load(self):
+        if self.global_config is None:
+            self.global_config = self.__load_config(self.__global_config_src)
+        if self.local_config is None:
+            self.local_config = self.__load_config(self.__local_config_src)
+
+    def environment_vars(self):
+        environment = dict()
+        self.__lazy_config_load()
+        if not self.global_config is None: environment.update(self.global_config)
+        if not self.local_config is None: environment.update(self.local_config)
+        return environment
 
 
 class Bunch(object):
@@ -78,6 +88,8 @@ class Bunch(object):
         self.deploy_dir = os.path.join(self.dst_dir, self.name())
         self.deploy_backup_dir = self.deploy_dir + '.backup'
 
+        self.__personalizer = FeaturePersonalizer(self.deploy_dir, self.global_config)
+
     def __get_test_bunch(self, path):
         return os.path.dirname(path)
 
@@ -89,6 +101,9 @@ class Bunch(object):
 
     def name(self):
         return os.path.basename(self.bunch_dir)
+
+    def get_config(self):
+        return self.__personalizer.environment_vars()
     
     def deploy(self):
         # if output folder already exists we should back it up first
@@ -102,7 +117,7 @@ class Bunch(object):
         copytree(self.src_dir, self.deploy_dir)
 
     def personalize(self):
-        FeaturePersonalizer(self.deploy_dir, self.global_config).personalize()
+        self.__personalizer.personalize()
 
     def deployed_at(self):
         return self.deploy_dir
@@ -121,14 +136,11 @@ class Bunch(object):
 
         return stories
 
-            
-
 
 class BunchTestStory(object):
     setup_scenario = u'Setup prerequisites'
     re_setup = re.compile(r'Require setup:? "(.*)"')
     re_external_setup = re.compile(r'Require external setup:? "(.*)"')
-
 
     def __init__(self, test, setup=None, teardown=None):
         self.test = test
@@ -228,7 +240,6 @@ class BunchTestStory(object):
                                     os.path.dirname(self.test),
                                     ".teardown", env_name)
 
-
     def get_fixtures(self, env_name=None):
         test, setup, teardown  = self.get_test_triplet(env_name)
         setup_dependencies = self.get_test_setup_dependencies(env_name)
@@ -241,16 +252,93 @@ class BunchTestStory(object):
 
         return pairs
 
+
+class MustfailRegistry(collections.MutableMapping,dict):
+    ITEM_TYPES = ['features', 'scenarios', 'steps']
+    def __init__(self, must_fail_list):
+        super(MustfailRegistry, self).__init__(self.__compile(must_fail_list))
+
+    def __getitem__(self,key):
+        return dict.__getitem__(self,key)
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self,key,value)
+
+    def __delitem__(self, key):
+        dict.__delitem__(self,key)
+
+    def __iter__(self):
+        return dict.__iter__(self)
+
+    def __len__(self):
+        return dict.__len__(self)
+
+    def __contains__(self, x):
+        return dict.__contains__(self,x)
+
+
+    def __compile(self, must_fail):
+            def compile(pattern_dict):
+                compiled = dict(pattern_dict)
+                compiled['pattern'] = re.compile(pattern_dict['pattern'])
+                return compiled
+
+            compiled_must_fail = {}
+            for item_type in MustfailRegistry.ITEM_TYPES:
+                if item_type in must_fail:
+                    compiled_must_fail[item_type] = [compile(item) for item in must_fail[item_type]]
+
+            return compiled_must_fail
+
+
+class MustfailMatcher(object):
+    CONFIG_ITEM = 'MustFail'
+    def __init__(self, bunch_conf):
+        self.must_fail = self.__load_config(bunch_conf)
+        self.registry = MustfailRegistry(self.must_fail)
+
+    def __load_config(self, bunch_conf):
+        if MustfailMatcher.CONFIG_ITEM in bunch_conf:
+            return bunch_conf[MustfailMatcher.CONFIG_ITEM]
+        return {}
+
+    def matches(self, entry, item):
+        if entry in self.registry:
+            for must_fail in self.registry[entry]:
+                if must_fail['pattern'].search(item) is not None:
+                    return True
+
+        return False
+
+    """
+    This method accepts ElementTree of bunch XML result
+    It return True if and only if all expected failures are present and the remaining results are not failures
+    """
+    def success(self, et):
+
+        if et is not None:
+            results = BunchResults(et)
+            for item_type in MustfailRegistry.ITEM_TYPES:
+                if item_type in self.registry:
+                    result_map = results.get_by_type(item_type)
+                    for item, result in result_map.items():
+                        if (result == "failed" and not self.matches(item_type, item))\
+                        or (result == 'passed' and self.matches(item_type, item)):
+                            return False
+
+        return True
+
+
 class SerialBunchRunner(object):
     def __init__(self, bunch_list, args, env_name=None, plugin=None, plugin_params=None):
         self.args = args
         self.bunch_list = bunch_list
         self.env_name=env_name
         self.plugin=self.__create_plugin(plugin, plugin_params)
+        self.current_bunch_conf = {}
 
     def __create_plugin(self, name, params):
         return load_plugin(name, params)
-
 
     def __save_path_for_test(self, test):
         return os.path.splitext(test)[0]
@@ -276,15 +364,35 @@ class SerialBunchRunner(object):
         return [story.get_setup_dependency_groups(self.env_name) for story in stories], \
                [ story.get_teardown_dependency_groups(self.env_name) for story in stories]
 
+    def __is_any_failure(self, bunch_collector):
+        et = bunch_collector.get_element_tree()
+        return not self.__must_fail_aware_result(et)
+
+    def __must_fail_aware_result(self, et):
+        return MustfailMatcher(self.__current_bunch.get_config()).success(et)
+
+    def __is_all_success(self, bunch_collector):
+        return not self.__is_any_failure(bunch_collector)
+
+    def __last_passed(self, bunch_collector):
+        et = bunch_collector.get_last_result_et()
+        return self.__must_fail_aware_result(et)
+
+    def __last_failed(self, bunch_collector):
+        return not self.__last_passed(bunch_collector)
+
+
     def __run_fixtures(self, groups, results_name, bunch_collector, stop_on_failure=True):
         results = XmlResultCollector()
+        none_failed = True
         for group in groups:
             for script in group:
-                if not results.all_successful() and stop_on_failure:
+                if stop_on_failure and self.__last_failed(bunch_collector):
                     break
                 self.__run_lettuce(LettuceRunner(script, self.args), results, bunch_collector)
+                none_failed = none_failed and self.__last_passed(bunch_collector)
         results.dump(results_name)
-        return results.all_successful()
+        return none_failed
 
     def __deps_contain(self, deps, fixture):
         for group in deps:
@@ -295,26 +403,33 @@ class SerialBunchRunner(object):
     def __exec_default_fixture(self, fixture, xunit_result, bunch_result, deps):
         if not self.__deps_contain(deps, fixture):
             return self.__run_lettuce(LettuceRunner(fixture, self.args), xunit_result, bunch_result) and\
-                   xunit_result.all_successful()
+                   self.__last_passed(bunch_result)
+
         return True
 
     def __run_story(self, story, setup_seq, teardown_seq, bunch_collector):
         result = XmlResultCollector()
         test, setup, teardown = story.get_test_triplet(self.env_name)
+        success = False
         if setup:
             self.__exec_default_fixture(setup, result, bunch_collector, setup_seq)
-        if result.all_successful():
+        if self.__last_passed(bunch_collector):
             self.__run_lettuce(LettuceRunner(test, self.args), result, bunch_collector)
+            success = self.__last_passed(bunch_collector)
         if teardown:
             self.__exec_default_fixture(teardown, result, bunch_collector, teardown_seq)
         result.dump(self.__save_path_for_test(story.test))
-        return result.all_successful()
+        return success
 
     def __run_stories(self, stories, setup_seq, teardown_seq, collector):
         none_failed = True
         for story in stories:
             none_failed = none_failed and self.__run_story(story, setup_seq, teardown_seq, collector)
         return none_failed
+
+    def __set_current_bunch(self, bunch):
+        set_current_bunch_dir(bunch.deployed_at())
+        self.__current_bunch = bunch
 
     def run(self):
         """
@@ -324,7 +439,7 @@ class SerialBunchRunner(object):
         for bunch in self.bunch_list:
             collector = BunchXmlCollector()
             none_failed = True
-            set_current_bunch_dir(bunch.deployed_at())
+            self.__set_current_bunch(bunch)
             stories = bunch.get_stories()
             setup_deps, teardown_deps = self.__get_fixture_deps(stories)
 
@@ -357,18 +472,19 @@ class SerialBunchRunner(object):
 class BunchXmlCollector(object):
     def __init__(self):
         self.results = None
+        self.last_result = None
 
     def pickup(self, filename):
         if not os.path.exists(filename):
             return
 
         xml_result = ET.ElementTree(file=filename)
+        self.last_result = xml_result
         if self.results is None:
             self.results = xml_result
         else:
             new_elements = xml_result.getroot().getchildren()
             self.results.getroot().extend(new_elements)
-
 
     def all_successful(self):
         def skipped(x):
@@ -393,6 +509,9 @@ class BunchXmlCollector(object):
 
     def get_element_tree(self):
         return self.results
+
+    def get_last_result_et(self):
+        return self.last_result
 
 
 class XmlResultCollector(object):

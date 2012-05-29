@@ -32,7 +32,7 @@ def assert_element_wise_equals(original, expected):
 def assert_matches(text, regexp, msg=None):
     regexp = re.compile(regexp)
     msg = msg or "Regexp didn't match"
-    msg = '%s: %r not found in %r' % (msg, regexp.pattern, text)
+    #msg = '%s: %r not found in %r' % (msg, regexp.pattern, text)
     assert_not_equals(regexp.search(text), None, msg)
 
 def assert_not_matches(text, regexp, msg=None):

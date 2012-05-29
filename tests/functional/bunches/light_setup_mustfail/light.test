@@ -1,0 +1,118 @@
+Feature: Start instance(s) in single node deployment using  python-novaclient CLI
+    In order to smoke test OpenStack build
+    As tester
+    I want to register start instance and verify it is up and available via SSH
+
+    Scenario: Setup prerequisites
+        Require setup "single-node ! novaclient-users ! novarc ! novaclient-network ! novaclient-images ! novaclient-keys ! lvm"
+
+    Scenario: Security Groups quick test
+        Given novarc is available
+        When I add security group "{{sg.name}}"
+        And I add rule allow from group "", protocol "tcp", host "{{network.cc_cidr}}" to access port "22" in group ""
+        And I add rule allow from group "", protocol "tcp", host "{{network.cc_cidr}}" to access port "22" in group "{{sg.name}}"
+        And I add rule allow from group "", protocol "icmp", host "{{network.cc_cidr}}" to access port "" in group ""
+        And I add rule allow from group "", protocol "icmp", host "{{network.cc_cidr}}" to access port "" in group "{{sg.name}}"
+
+
+
+    Scenario: Start single instance and bind with pre-uploaded keypair
+        Given novarc is available
+        And VM image "{{image.name}}" is registered
+        And keypair with name "{{vm.keypair.name}}" exists
+        When I start VM instance "{{vm.name}}" using image "{{image.name}}",  flavor "{{vm.flavor}}", keypair "{{vm.keypair.name}}" in security groups "{{sg.name}}"
+        Then VM instance "{{vm.name}}" comes up within "{{vm.boot_timeout}}" seconds
+        And VM instance "{{vm.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+        And I see that "ssh" port of VM instance "{{vm.name}}" is open and serves "ssh" protocol within "{{vm.ssh_deadline}}" seconds
+        And I can log into VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}"
+        And I login to VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command  |   Expected  |
+            |  whoami   |   root      |
+        And I can not start VM instance "{{vm.name}}" using image "{{image.name}}", flavor "{{vm.flavor}}"
+
+    Scenario: Floating IP quick test
+        Given I see pool of external IP addresses "{{cc_external_network}}" exist
+        When I allocate address "{{floating.name}}"
+        And I associate address "{{floating.name}}" with instance "{{vm.name}}"
+        And I run commands:
+            |  Command                                                         | Expected  |
+            |  sudo iptables -I OUTPUT -p icmp -j ACCEPT                       | noFail    |
+        Then address "{{floating.name}}" is pingable within "{{vm.ping_deadline}}" seconds
+
+    Scenario: Local volumes quick test
+        Given novarc is available
+        When I create volume for VM instance "{{vm.name}}" with size "{{local_volume.size}}" as device "{{local_volume.device}}"
+        And I create snapshot from device "{{local_volume.device}}" of VM instance "{{vm.name}}" and name it "{{local_volume.snapshot.name}}"
+        Then device "{{local_volume.device}}" is attached to VM instance "{{vm.name}}" in "{{local_volume.timeout}}" seconds
+        And snapshot "{{local_volume.snapshot.name}}" is active within "{{local_volume.snapshot.timeout}}" seconds
+        And I login to VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                  |   Expected |
+            |  test -b {{local_volume.device}}          |   noFail   |
+            |  /sbin/blockdev --getsize64 {{local_volume.device}}              |  {{local_volume.size_bytes}}  |
+
+
+    Scenario: Volumes quick test
+        Given every service is running:
+            | ServiceName   |
+            {% for service in volume_services %}
+            | {{ service }} |
+            {% endfor %}
+        When I create volume "{{volume.name}}" with size of "{{volume.size}}" in zone "{{volume.zone}}"
+        And volume "{{volume.name}}" comes up within "{{vm.boot_timeout}}" seconds
+        And I attach volume "{{volume.name}}" to VM instance "{{vm.name}}" as device "/dev/vdd"
+        Then I see volume "{{volume.name}}" attached to VM instance "{{vm.name}}"
+
+    Scenario: Test both Local-Volumes and Volumes are functional
+        Given novarc is available
+        When I login to VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                               | Expected |
+## Get debug info
+            | dmesg \|tail -20                                       |  noFail  |
+            | cat /proc/diskstats                                    |  noFail  |
+            | /sbin/blockdev --getsize64 /dev/vdc                    |  {{local_volume.size_bytes}}  |
+            | /sbin/blockdev --getsize64 /dev/vdd                    |  {{volume.size_bytes}}  |
+## Make FS
+            | /sbin/mke2fs /dev/vdc                                  |  noFail  |
+            | /sbin/mke2fs /dev/vdd                                  |  noFail  |
+        Then commands are executed without errors
+
+
+
+
+
+
+
+
+
+## ----------  Begin cleaning  -------------
+
+    Scenario: Clean after Floating IP quick test
+        I de-associate address "{{floating.name}}" from instance "{{vm.name}}"
+        I de-allocate address "{{floating.name}}"
+        I run commands:
+                |  Command                                                         | Expected  |
+                |  sudo iptables -D OUTPUT -p icmp -j ACCEPT                       | noFail    |
+        And I login to VM "{{vm.name}}" via SSH as "{{vm.user}}" with key "{{vm.keypair.private}}" and run commands:
+            |  Command                                  |   Expected |
+            |  whoami  |   root      |
+
+
+
+    Scenario: Clean after volumes test
+        I detach volume "{{volume.name}}"
+        I remove volume "{{volume.name}}"
+        Then I see volume "{{volume.name}}" removed
+
+
+    Scenario: Clean after Local volumes quick test
+        I deregister VM image "{{local_volume.snapshot.name}}"
+        I delete device "{{local_volume.device}}" on VM instance "{{vm.name}}"
+        Then device "{{local_volume.device}}" on VM instance "{{vm.name}}" is deleted within "{{local_volume.delete_timeout}}" seconds
+
+    Scenario: Stop instances
+        When I stop VM instance "{{vm.name}}"
+        Then VM instance "{{vm.name}}" is stopped within "{{vm.boot_timeout}}" seconds
+
+    Scenario: Clean after Security Groups quick test
+        I remove security group "default"
+        I remove security group "{{sg.name}}"

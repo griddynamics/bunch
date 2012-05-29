@@ -1,0 +1,4 @@
+MustFail:
+  scenarios:
+    - pattern: '.*?Must Fail.*?'
+      comment: 'This step must Fail'

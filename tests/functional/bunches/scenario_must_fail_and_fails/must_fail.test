@@ -1,0 +1,14 @@
+Feature: This feature Must Fail
+    In order to test MustFail Bunch feature
+    As developer
+    I want to run this test
+
+        Scenario: This scenario Should Pass
+        Given this step Should Pass
+        When I run another that Should Pass
+        Then the last one Should Pass
+
+        Scenario: This scenario Must Fail
+        Given this step Should Pass
+        When I run another that Should Pass
+        Then the last one Must Fail
