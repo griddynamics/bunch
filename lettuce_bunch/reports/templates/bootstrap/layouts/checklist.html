@@ -20,6 +20,37 @@
         <h2>{{name}} results</h2>
         <br>
         <p>{{description}}</p>
+        <br>
+        <table class="table table-striped table-bordered table-condensed">
+            <thead>
+                <tr>
+                    <th>Units</th>
+                    <th>Passed</th>
+                    <th>Failed</th>
+                    <th>Expected Failures</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Features</td>
+                    <td>{{ summary.total.features.passed }}</td>
+                    <td>{{ summary.total.features.failed }}</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>Scenarios</td>
+                    <td>{{ summary.total.scenarios.passed }}</td>
+                    <td>{{ summary.total.scenarios.failed }}</td>
+                    <td>0</td>
+                </tr>
+                <tr>
+                    <td>Steps</td>
+                    <td>{{ summary.total.steps.passed }}</td>
+                    <td>{{ summary.total.steps.failed }}</td>
+                    <td>0</td>
+                </tr>
+            </tbody>
+        </table>
 </div>
 
 {% for feature in features %}
