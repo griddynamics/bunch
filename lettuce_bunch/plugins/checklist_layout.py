@@ -1,6 +1,8 @@
 import unicodedata
+import time_utils
 import lettuce_bunch.plugins.base
 import lettuce_bunch.reports as reports
+from lettuce_bunch.time_utils import Local
 import os
 from jinja2 import Template
 from os.path import join, abspath, dirname, exists
@@ -11,6 +13,7 @@ from shutil import copytree, copy
 from datetime import datetime
 import yaml
 import anyjson
+import re
 
 PLUGIN_PAGE_TEMPLATE = "bootstrap/layouts/checklist.html"
 PLUGIN_SITE_INDEX_TEMPLATE = "bootstrap/layouts/index.html"
@@ -74,7 +77,7 @@ class HtmlSite(object):
     def generate(self, page_template, index_template, vars):
         self.__check_static_deployed()
         html = self.render(page_template, vars, self.__relative_url_for_statics())
-        dt = datetime.now()
+        dt = datetime.now(Local)
         report_filename = self.__report_filename(dt)
         dst_file = join(self.dst, report_filename)
         self.write_html_result(html, dst_file)
@@ -105,20 +108,13 @@ class HtmlSite(object):
 
     def __update_json(self, report_filename, name, date, description, summary):
         def cut_milliseconds(s):
-            return s[:s.rfind('.')]
-
-        def add_tz_spec(s):
-            date, time = s.split('T')
-            if 'z' in time or '-' in time or '+' in time:
-                return s
-
-            return s+'+00:00'
+            return re.sub(r'\.(\d*)', r'', s)
 
         data = self.__read_json()
         bunches = data['bunches']
         bunches.append({   'page'  : './' + report_filename,
                         'name'  : name,
-                        'date'  : add_tz_spec(cut_milliseconds(date.isoformat())),
+                        'date'  : cut_milliseconds(date.isoformat()),
                         'description' : description,
                         'summary' : summary})
         self.__write_json(data)
