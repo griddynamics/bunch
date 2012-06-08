@@ -8,7 +8,6 @@
     <div class="nav-collapse">
         <ul class="nav">
 {#            <li class="active"><a href="#">Examples</a></li> #}
-{#            <li class="active"><a href="http://github.com/auzigog/jinja-bootstrap/">GitHub</a></li> #}
 {#            <li><a href="#">About</a></li>#}                                                          
 {#            <li><a href="#">Contact</a></li>#}
         </ul>
@@ -25,38 +24,88 @@
             <thead>
                 <tr>
                     <th>Units</th>
+                    <th>Total</th>
                     <th>Passed</th>
                     <th>Failed</th>
-                    <th>Expected Failures</th>
+                    <th>Skipped</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>Features</td>
+                    <td>{{ summary.total.features.count }}</td>
                     <td>{{ summary.total.features.passed }}</td>
                     <td>{{ summary.total.features.failed }}</td>
-                    <td>0</td>
+                    <td>{{ summary.total.features.skipped }}</td>
                 </tr>
                 <tr>
                     <td>Scenarios</td>
+                    <td>{{ summary.total.scenarios.count }}</td>
                     <td>{{ summary.total.scenarios.passed }}</td>
                     <td>{{ summary.total.scenarios.failed }}</td>
-                    <td>0</td>
+                    <td>{{ summary.total.scenarios.skipped }}</td>
                 </tr>
                 <tr>
                     <td>Steps</td>
+                    <td>{{ summary.total.steps.count }}</td>
                     <td>{{ summary.total.steps.passed }}</td>
                     <td>{{ summary.total.steps.failed }}</td>
-                    <td>0</td>
+                    <td>{{ summary.total.steps.skipped }}</td>
                 </tr>
             </tbody>
         </table>
 </div>
 
 {% for feature in features %}
-<div class="highlight"><pre><span class="k">Feature:</span><span class="nf"> {{feature.name}}</span>
-{% for scenario in feature.scenarios %}<span class="nf">        </span><span class="k">Scenario:</span><span class="nf"> {{scenario.name}}</span>
-{% for step in scenario.steps %}<span class="nf">{{result_icon(step.result)}}            </span><span class="nf"> {{step.name}}</span>
+
+    <div class="highlight"><pre>
+{%- if feature.mustfail -%}
+{%- if feature.MF_OK -%}
+<div class="alert alert-info"><strong>Must Fail:</strong>  {{feature.alert}}
+{%- else -%}
+<div class="alert alert-error"><strong>Must Fail</strong>  {{feature.alert}}
+{%- endif -%}
+{%- if feature.mustfail_id is string %}
+<strong>BUG ID:</strong> {{ feature.mustfail_id }}
+{%- endif -%}
+{%- if feature.mustfail_comment is string %}
+<strong>Comment:</strong> {{ feature.mustfail_comment }}
+{%- endif -%}
+</div>
+{%- endif -%}
+    <span class="k">Feature:</span><span class="nf"> {{feature.name}}</span>
+{% for scenario in feature.scenarios -%}
+{%- if scenario.mustfail %}
+    {%- if scenario.MF_OK -%}
+    <div class="alert alert-info"><strong>Must Fail:</strong>  {{scenario.alert}}
+    {%- else -%}
+    <div class="alert alert-error"><strong>Must Fail</strong>  {{scenario.alert}}
+    {%- endif -%}
+    {%- if scenario.mustfail_id is string %}
+<strong>BUG ID:</strong> {{ scenario.mustfail_id }}
+    {%- endif -%}
+    {%- if scenario.mustfail_comment is string %}
+<strong>Comment:</strong> {{ scenario.mustfail_comment }}
+    {%- endif -%}
+    </div>
+{%- endif -%}
+    <span class="nf">        </span><span class="k">Scenario:</span><span class="nf"> {{scenario.name}}</span>
+{% for step in scenario.steps -%}
+{%- if step.mustfail -%}
+{%- if step.MF_OK -%}
+<div class="alert alert-info"><strong>Must Fail:</strong>  {{step.alert}}
+{%- else -%}
+<div class="alert alert-error"><strong>Must Fail</strong>  {{step.alert}}
+{%- endif -%}
+{%- if step.mustfail_id is string %}
+<strong>BUG ID:</strong> {{ step.mustfail_id }}
+{%- endif -%}
+{%- if step.mustfail_comment is string %}
+<strong>Comment:</strong> {{ step.mustfail_comment }}
+{%- endif -%}
+</div>
+{%- endif -%}
+        <span class="nf">{{result_icon(step.result)}}            </span><span class="nf"> {{step.name}}</span>
 {{print_hashlines(step.hashlines)}}
 {%- endfor %}
 {% endfor %} 

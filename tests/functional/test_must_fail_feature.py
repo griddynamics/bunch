@@ -1,6 +1,5 @@
 from os.path import dirname, abspath, join
 from nose.tools import assert_equals, assert_not_equals
-from tests.asserts import assert_matches, assert_feature_matches
 from tests.utils import run_bunch_cli
 
 
@@ -66,4 +65,7 @@ def test_light_setup_mustfail():
 
 def test_light_teardown_mustfail():
     must_fail_routine("light_teardown_mustfail", positive_verification, '-e clean')
+
+def test_step_just_fails():
+    must_fail_routine("step_just_fails", negative_verification)
 

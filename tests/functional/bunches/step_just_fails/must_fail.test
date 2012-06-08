@@ -12,3 +12,6 @@ Feature: This feature Must Fail
             Given this step Should Pass
             When I run another that Should Pass
             Then the last one Must Fail
+
+         Scenario: This scenario Should Pass
+            This one Must Fail

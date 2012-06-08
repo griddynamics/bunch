@@ -14,7 +14,9 @@ from lettuce_bunch import dependencies
 from lettuce_bunch.exceptions import CyclicDependencySpecification
 from lettuce_bunch.special import set_current_bunch_dir
 from lettuce_bunch.utils import every
-from lettuce_bunch.plugins import load_plugin, BunchDetails, BunchResults
+from lettuce_bunch.plugins import load_plugin, BunchDetails, BunchResults, BunchResultItem
+from lettuce_bunch.mustfail import InplaceMustfailParser
+from itertools import chain
 
 try:
     import lxml.etree as ET
@@ -31,6 +33,7 @@ class FeaturePersonalizer(object):
         self.working_dir = working_dir
         self.local_config = None
         self.global_config = None
+        self.inplace_mustfails = None
 
         self.__global_config_src = global_config
         expected_local_config_file = os.path.join(self.working_dir, 'config.yaml')
@@ -65,11 +68,39 @@ class FeaturePersonalizer(object):
         if self.local_config is None:
             self.local_config = self.__load_config(self.__local_config_src)
 
+    def __load_inplace_mustfails(self):
+        mustfail_definitions = {}
+        for feature_filename in self.__find_feature_files():
+            feature = Feature.from_file(feature_filename)
+            inplace_mfp = InplaceMustfailParser(feature)
+            if len(inplace_mfp) > 0:
+                mustfail_definitions = self.__merge_mfs(mustfail_definitions, inplace_mfp.as_dict())
+            return mustfail_definitions
+
+    def __lazy_load_inplace_mustfails(self):
+        if self.inplace_mustfails is None:
+            self.inplace_mustfails = self.__load_inplace_mustfails()
+
+    def __merge_mfs(self,*envs):
+        pure_mfs = map(lambda d: d['MustFail'], filter(lambda d: 'MustFail' in d, envs))
+        mf_types = ['features', 'scenarios', 'steps']
+        pure_result = {}
+        for mf_type in mf_types:
+            mf_list_of_type = list(
+                chain.from_iterable(
+                    [mf[mf_type] for mf in filter(lambda d: mf_type in d, pure_mfs)]))
+            if len(mf_list_of_type) > 0:
+                pure_result[mf_type] = mf_list_of_type
+        return {'MustFail': pure_result} if len(pure_result) > 0 else {}
+
     def environment_vars(self):
         environment = dict()
         self.__lazy_config_load()
+        self.__lazy_load_inplace_mustfails()
         if not self.global_config is None: environment.update(self.global_config)
         if not self.local_config is None: environment.update(self.local_config)
+        merged_mfs = self.__merge_mfs(*filter(None, [self.local_config, self.inplace_mustfails, self.global_config]))
+        environment.update(merged_mfs)
         return environment
 
 
@@ -254,7 +285,10 @@ class BunchTestStory(object):
 
 
 class MustfailRegistry(collections.MutableMapping,dict):
-    ITEM_TYPES = ['features', 'scenarios', 'steps']
+    TYPE_FEATURE = 'features'
+    TYPE_SCENARIO = 'scenarios'
+    TYPE_STEP = 'steps'
+    ITEM_TYPES = [TYPE_FEATURE, TYPE_SCENARIO , TYPE_STEP]
     def __init__(self, must_fail_list):
         super(MustfailRegistry, self).__init__(self.__compile(must_fail_list))
 
@@ -310,21 +344,99 @@ class MustfailMatcher(object):
 
         return False
 
+    def __mf_info(self, entry, item):
+        if entry in self.registry:
+            for must_fail in self.registry[entry]:
+                if must_fail['pattern'].search(item) is not None:
+                    return must_fail.get('id'), must_fail.get('comment')
+
+    def __xml2mf_type(self, xml_item):
+        map = { "step": MustfailRegistry.TYPE_STEP,
+                "feature": MustfailRegistry.TYPE_FEATURE,
+                "scenario": MustfailRegistry.TYPE_SCENARIO}
+        if xml_item.tag in map:
+            return map[xml_item.tag]
+        return None
+
+
+    def mustfail(self, xml_item):
+        mf_type = self.__xml2mf_type(xml_item)
+        if mf_type:
+            item = BunchResultItem(xml_item)
+            mustfail = self.matches(mf_type, item.name())
+            result = item.result()
+            failed = (result == 'failed')
+            return mustfail, failed, result
+
+    def mustfail_info(self, xml_item):
+        mf_type = self.__xml2mf_type(xml_item)
+        if mf_type:
+            item = BunchResultItem(xml_item)
+            return self.__mf_info(mf_type, item.name())
+
+    def result(self, xml_item):
+        return self.success(xml_item), BunchResultItem(xml_item).result()
+
     """
     This method accepts ElementTree of bunch XML result
     It return True if and only if all expected failures are present and the remaining results are not failures
     """
     def success(self, et):
-
         if et is not None:
+            et = et.find('.')
             results = BunchResults(et)
-            for item_type in MustfailRegistry.ITEM_TYPES:
-                if item_type in self.registry:
-                    result_map = results.get_by_type(item_type)
-                    for item, result in result_map.items():
-                        if (result == "failed" and not self.matches(item_type, item))\
-                        or (result == 'passed' and self.matches(item_type, item)):
+            succeded = True
+            if len(results) > 0:
+                itself = BunchResultItem(et)
+                item_type = itself.get_type()
+                if item_type is not None:
+                    matches = self.matches(item_type, itself.name())
+                    if matches:
+                        result = itself.result()
+                        if result == 'passed':
                             return False
+                        if result == "failed":
+                            return True
+                #go subitems
+                for item_type in MustfailRegistry.ITEM_TYPES:
+                    result_map = results.get_by_type(item_type)
+                    for xml_item, item_result in result_map.items():
+                        item, result = item_result
+                        matches = self.matches(item_type, item)
+                        if result == 'skipped':
+                            #then skip
+                            continue
+                        if matches:
+                            if result == 'passed':
+                                return False
+                            if result == "failed":
+                                return True
+                        elif result == 'failed':
+                            #look deeper
+                            subresults = BunchResults(xml_item)
+                            if (not len(subresults) > 0) or (not self.success(xml_item)):
+                                return False
+                        elif result == 'passed':
+                            #look deeper
+                            subresults = BunchResults(xml_item)
+                            if len(subresults) > 0 and not self.success(xml_item):
+                                    return False
+
+            elif et.tag == 'step':
+                matches = self.matches(MustfailRegistry.TYPE_STEP, et.find('properties/sentence').text)
+                result = et.find('result').text
+                if result == 'passed':
+                    if matches:
+                        return False
+                    else:
+                        return True
+                if result == "failed":
+                    if matches:
+                        return True
+                    else:
+                        return False
+
+            return succeded
 
         return True
 
@@ -466,7 +578,9 @@ class SerialBunchRunner(object):
                 False)
             no_bunch_failed = no_bunch_failed and none_failed
             collector.dump(self.__save_path_for_test(os.path.join(bunch.deploy_dir, bunch.name())))
-            self.plugin.transform(collector.get_element_tree(), BunchDetails(name=bunch.name()))
+            self.plugin.transform(collector.get_element_tree(),
+                                    MustfailMatcher(self.__current_bunch.get_config()),
+                                    BunchDetails(name=bunch.name()))
         return no_bunch_failed
 
 class BunchXmlCollector(object):

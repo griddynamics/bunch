@@ -13,8 +13,6 @@ def dependency_lists_to_pairs(dependency_lists):
 def dependency_groups_to_pairs(groups):
     return chain(*(product(a,b) for a,b in pairwise(groups)))
 
-
-
 def split_solitaries(deps):
     solitaries = []
     linked = []

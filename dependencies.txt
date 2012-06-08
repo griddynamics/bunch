@@ -2,3 +2,4 @@ lettuce
 jinja2
 yaml
 nose
+anyjson

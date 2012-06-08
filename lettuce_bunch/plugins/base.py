@@ -26,7 +26,7 @@ class BaseOutputPlugin(object):
     def __init__(self, dst_dir=None, **kwargs):
         self.dst_dir = get_current_bunch_dir() if dst_dir is None else dst_dir
 
-    def transform(self, et, details):
+    def transform(self, et, mf, details):
         pass
 
 

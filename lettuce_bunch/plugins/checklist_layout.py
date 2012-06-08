@@ -1,5 +1,4 @@
 import unicodedata
-import time_utils
 import lettuce_bunch.plugins.base
 import lettuce_bunch.reports as reports
 from lettuce_bunch.time_utils import Local
@@ -138,6 +137,7 @@ class HtmlSite(object):
 class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
     def __init__(self, **kw):
         self.bootstrap = kw['bootstrap'] if 'bootstrap' in kw else None
+        self.mf = None
 
         super(OutputPlugin,self).__init__(**kw)
 
@@ -146,6 +146,22 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
         for attr in common_attrs:
             rez = item.find(attr)
             dict[attr] = rez.text if rez is not None else ""
+        #now check for MF
+        mustfail, failed, result = self.mf.mustfail(item)
+        dict['mustfail'] = mustfail
+        if mustfail:
+            dict['mustfail_id'], dict['mustfail_comment'] = self.mf.mustfail_info(item)
+            if failed:
+                dict['MF_OK'] = True
+                dict['alert'] = 'failed as expected'
+            elif result == 'passed':
+                dict['MF_OK'] = False
+                dict['alert'] = 'but not failed'
+
+        #raw_result = dict['result']
+        #if raw_result == 'passed' or raw_result == 'failed':
+        #    dict['result'] = 'passed' if self.mf.success(item) else 'failed'
+
 
     def __get_item_text(self, item, path):
         rez = item.find(path)
@@ -247,7 +263,6 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
 
         return u"\n".join(table) + u"\n"
 
-
     def format_hashes(self, hashes, keys):
         if len(hashes)*len(keys) > 0:
             return self.d2s(hashes, keys).splitlines()
@@ -255,11 +270,15 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
 
 
 
-    def __parse_steps(self, steps_xml):
+    def __parse_steps(self, steps_xml, set_passed=False):
         steps_list = []
         for step in steps_xml:
             step_props = dict()
             self.__get_common_props(step_props, step)
+            if set_passed:
+                step_props['result'] = 'passed'
+            else:
+                step_props['result'] = self.__mf_result(step)
             step_props['name'] = self.__get_prop_text(step, 'original_sentence')
             step_props['hashes'] = self.__parse_hashes(step)
             step_props['hashkeys'] = self.__parse_keys(step)
@@ -276,51 +295,126 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
             outlines_list.append(outline_props)
         return outlines_list
 
-    def __parse_scenarios(self, scenarios_xml):
+    def __parse_scenarios(self, scenarios_xml, set_passed=False):
         scenario_list = []
         for scenario in scenarios_xml:
             scenario_props = dict()
-            scenario_props['steps'] = self.__parse_steps(scenario.iterfind("steps/step"))
-            scenario_props['outlines'] = self.__parse_outlines(scenario.iterfind("outlines/outline"))
             self.__get_common_props(scenario_props, scenario)
             scenario_props['name']= self.__get_prop_text(scenario, 'name')
+
+            if set_passed:
+                scenario_props['result'] = 'passed'
+                scenario_props['steps'] = self.__parse_steps(scenario.iterfind("steps/step"), set_passed=True)
+            else:
+                scenario_props['steps'] = self.__parse_steps(scenario.iterfind("steps/step"),
+                                                             self.__set_passed(scenario))
+                scenario_props['result'] = self.__mf_result(scenario)
+
+            scenario_props['outlines'] = self.__parse_outlines(scenario.iterfind("outlines/outline"))
+
             scenario_list.append(scenario_props)
 
         return scenario_list
+
+    def __set_passed(self, item):
+        success, result = self.mf.result(item)
+        if result != 'skipped' and success:
+            return True
+        return False
+
+    def __mf_result(self, item):
+        success, result = self.mf.result(item)
+        if result == 'skipped':
+            return result
+        elif success:
+            return 'passed'
+        else:
+            return 'failed'
 
     def __parse_features(self, features_xml):
         featured_list = []
         for feature_item in features_xml:
             feature_props = dict()
-            feature_props['scenarios'] = self.__parse_scenarios(feature_item.iterfind("scenarios/scenario"))
+
+            feature_props['scenarios'] = self.__parse_scenarios(feature_item.iterfind("scenarios/scenario"),
+                                                                self.__set_passed(feature_item))
             self.__get_common_props(feature_props, feature_item)
             feature_props['name'] = self.__get_prop_text(feature_item, 'name')
             feature_props['description'] = self.__get_prop_text(feature_item, 'description')
-
+            feature_props['result'] = self.__mf_result(feature_item)
             featured_list.append(feature_props)
 
         return featured_list
 
-    def __get_summary(self, et):
+    def __get_summary(self, features):
 
-        def get_item_count(et, path, value):
-            return len(filter(lambda x: x.text == value, et.findall(path)))
+        def get_items(et, path):
+            return et.findall(path)
 
-        def get_result_stats(et, path):
-            states = ['passed', 'failed', 'skipped']
+        def raw_result(item):
+            rez = item.find('result')
+            if rez is not None:
+                return rez.text
+
+        def inc(d, field):
+            d[field] = d[field] + 1
+
+
+        def inc_stats(stats, success, result):
+            inc(stats, 'count')
+            if result == 'skipped':
+                inc(stats, 'skipped')
+            elif success:
+                inc(stats, 'passed')
+            else:
+                inc(stats, 'failed')
+
+
+
+        def get_result_stats(et, path, mf):
+            states = ['count','passed', 'failed', 'skipped', 'expected_fail', 'unexpected_pass']
             stats = {}
             for state in states:
-                stats[state] = get_item_count(et, path, state)
+                stats[state] = 0
+
+            results = []
+            for item in get_items(et, path):
+                success, result = self.mf.result(item)
+                inc_stats(stats,success, result)
+
             return stats
 
-        #'features/feature/scenarios/scenario/steps/step/result'
-        total = {'features': get_result_stats(et, 'feature/result'),
-                 'scenarios' : get_result_stats(et, 'feature/scenarios/scenario/result'),
-                 'steps' : get_result_stats(et, 'feature/scenarios/scenario/steps/step/result')}
+        def inc_numbers(stats, result):
+            inc(stats, 'count')
+            inc(stats, result)
 
-        def get_detailed_stats(et):
+        def zero_stats():
+            states = ['count','passed', 'failed', 'skipped', 'expected_fail', 'unexpected_pass']
+            stats = {}
+            for state in states:
+                stats[state] = 0
+            return stats
+
+        def get_total_stats(features, ft, sc, st):
+            for feature in features:
+                inc_numbers(ft, feature['result'])
+                for scenario in feature['scenarios']:
+                    inc_numbers(sc, scenario['result'])
+                    for step in scenario['steps']:
+                        inc_numbers(st, step['result'])
+
+        ft = zero_stats()
+        sc = zero_stats()
+        st = zero_stats()
+        get_total_stats(features, ft, sc, st)
+        #'features/feature/scenarios/scenario/steps/step/result'
+        total = {'features': ft,
+                 'scenarios' : sc,
+                 'steps' : st}
+
+        def get_detailed_stats(features):
             return {}
-        detailed = get_detailed_stats(et)
+        detailed = get_detailed_stats(features)
 
         return {'total': total, 'detailed' : detailed}
 
@@ -328,16 +422,21 @@ class OutputPlugin(lettuce_bunch.plugins.base.BaseOutputPlugin):
         if not exists(self.dst_dir):
             os.mkdir(self.dst_dir)
 
-    def transform(self, et, details):
-        data = {'name' : details.name,
-                'description' : details.description,
-                'features' : self.__parse_features(et.iterfind("feature")),
-                'summary' :  self.__get_summary(et)}
+    def transform(self, et, mf, details):
+        self.mf = mf
+        name = details.name
+        description = details.description
+        features = self.__parse_features(et.iterfind("feature"))
+        summary = self.__get_summary(features)
+        data = {'name' : name,
+                'description' : description,
+                'features' : features,
+                'summary' :  summary}
 
         self.__ensure_dst_exists()
         site = HtmlSite(self.bootstrap, dst=self.dst_dir)
         #debug
-        with open(join(self.dst_dir, 'dump.yaml'), 'w') as f:
+        with open(join(self.dst_dir, 'last_result_dump.yaml'), 'w') as f:
             f.write(yaml.dump(data, default_flow_style=False))
 
         site.generate(PLUGIN_PAGE_TEMPLATE, PLUGIN_SITE_INDEX_TEMPLATE, data)

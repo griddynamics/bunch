@@ -41,7 +41,7 @@ class FixedOffset(tzinfo):
 
 # A class capturing the platform's idea of local time.
 
-import time_utils as _time
+import time as _time
 STDOFFSET = timedelta(seconds = -_time.timezone)
 if _time.daylight:
     DSTOFFSET = timedelta(seconds = -_time.altzone)
