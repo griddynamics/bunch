@@ -44,12 +44,11 @@ def get_package_data(package):
     return {package: filepaths}
 
 
-
 #required_modules = get_dependencies()
-required_modules = []
+required_modules = ['lettuce', 'jinja2', 'PyYAML', 'nose', 'anyjson', 'lxml']
 package='lettuce_bunch'
-license = 'GPL v3.0+'
 
+license = 'GPL v3.0+'
 setup(name='lettuce-bunch',
     version=version,
     description='Bunch test organizer for Lettuce',

@@ -4,7 +4,7 @@
 
 Summary: 	Bunch test organizer for Lettuce
 Name:	 	python-lettuce-bunch
-Version: 	0.2.0
+Version: 	0.3.0
 Release: 	1
 Source0: 	%{name}-%{version}.tar.gz
 License: 	GNU GPL v3+
